@@ -1,0 +1,13 @@
+/* Estilos globais do MeuBarbeiro */
+:root {
+  --font-main: 'Source Sans 3', sans-serif;
+  --font-heading: 'Manrope', sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Adicione aqui qualquer CSS global adicional se necessário */
