@@ -1,0 +1,7 @@
+{
+  "name": "MeuBarbeiro SaaS v1.0",
+  "description": "A comprehensive mobile-first SaaS platform for barber shop management, featuring appointment scheduling, inventory control, and financial dashboards.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
