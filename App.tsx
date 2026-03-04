@@ -303,7 +303,7 @@ const App: React.FC = () => {
     );
   }
 
-  const role = profile?.role || (user ? 'OWNER' : null);
+  const role = profile?.role || null;
 
   return (
     <HashRouter>
