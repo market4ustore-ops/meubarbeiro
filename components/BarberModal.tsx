@@ -80,17 +80,18 @@ export const BarberModal: React.FC<BarberModalProps> = ({
             value={formData.username}
             onChange={e => setFormData({ ...formData, username: e.target.value })}
             required
+            disabled={!!editingBarber}
           />
-          {editingBarber && (
-            <Input
-              label="Senha de Acesso"
-              type="password"
-              placeholder="••••••••"
-              icon={<Key size={18} />}
-              value={formData.password}
-              onChange={e => setFormData({ ...formData, password: e.target.value })}
-            />
-          )}
+          <Input
+            label={editingBarber ? "Alterar Senha (opcional)" : "Senha de Acesso"}
+            type="password"
+            placeholder="••••••••"
+            icon={<Key size={18} />}
+            value={formData.password}
+            onChange={e => setFormData({ ...formData, password: e.target.value })}
+            required={!editingBarber}
+            minLength={6}
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -125,14 +126,14 @@ export const BarberModal: React.FC<BarberModalProps> = ({
 
         <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
           <p className="text-xs text-emerald-500 flex items-center gap-2 font-medium">
-            <Shield size={14} /> {editingBarber ? 'As alterações serão aplicadas imediatamente.' : 'Um convite será enviado para o email acima para que o profissional crie sua senha.'}
+            <Shield size={14} /> {editingBarber ? 'As alterações serão aplicadas imediatamente.' : 'O profissional poderá acessar o sistema imediatamente com o email e senha definidos.'}
           </p>
         </div>
 
         <div className="flex gap-3 pt-6 border-t border-slate-800">
           <Button variant="secondary" className="flex-1" type="button" onClick={onClose}>Cancelar</Button>
           <Button className="flex-1" type="submit" loading={loading}>
-            {editingBarber ? "Salvar Alterações" : "Enviar Convite"}
+            {editingBarber ? "Salvar Alterações" : "Cadastrar Membro"}
           </Button>
         </div>
       </form>

@@ -136,6 +136,7 @@ const BarbersPage: React.FC = () => {
         const { data, error } = await supabase.functions.invoke('admin-invite-user', {
           body: {
             email,
+            password: barber.password,
             name: barber.name,
             role: barber.role,
             tenant_id: profile?.tenant_id

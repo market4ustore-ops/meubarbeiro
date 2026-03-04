@@ -18,47 +18,41 @@ serve(async (req) => {
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         );
 
-        const { email, name, role, tenant_id } = await req.json();
+        const { email, password, name, role, tenant_id } = await req.json();
 
-        if (!email) {
-            throw new Error('Email is required');
-        }
+        if (!email) throw new Error('Email is required');
+        if (!password && req.method !== 'PATCH') throw new Error('Password is required for new users');
 
-        // Detectar a origem (Vite/Produção)
-        const origin = req.headers.get('origin') || req.headers.get('referer');
-        const redirectTo = origin
-            ? `${origin}/accept-invite`
-            : `https://meubarbeiro.com/accept-invite`;
-
-        const { data: authData, error: inviteError } = await supabaseClient.auth.admin.inviteUserByEmail(email, {
-            data: {
-                name: name,
-                role: role,
-                tenant_id: tenant_id,
+        // Criar usuário diretamente (sem convite por email)
+        const { data: authData, error: createError } = await supabaseClient.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true, // Confirma o email automaticamente
+            user_metadata: {
+                name,
+                role,
+                tenant_id,
                 status: 'OFFLINE'
-            },
-            redirectTo: redirectTo
+            }
         });
 
-        if (inviteError) {
-            console.error('Error inviting user:', inviteError);
-            if (inviteError.message.includes('already been registered')) {
+        if (createError) {
+            console.error('Error creating user:', createError);
+            if (createError.message.includes('already been registered')) {
                 return new Response(
                     JSON.stringify({ error: 'Este email já está cadastrado no sistema.' }),
                     { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
                 );
             }
-            throw inviteError;
+            throw createError;
         }
 
-        // 2. Sincronização agora é feita via Trigger no banco de dados (public.handle_new_user)
+        // O trigger public.handle_new_user cuidará da inserção na tabela public.users
 
-
-        // Retornamos sucesso
         return new Response(
             JSON.stringify({
                 success: true,
-                message: 'Convite enviado com sucesso.',
+                message: 'Membro cadastrado com sucesso.',
                 user: authData.user
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
