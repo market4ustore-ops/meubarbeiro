@@ -26,9 +26,9 @@ serve(async (req) => {
 
         // Detectar a origem (Vite/Produção)
         const origin = req.headers.get('origin') || req.headers.get('referer');
-        const redirectTo = (origin && !origin.includes('localhost'))
+        const redirectTo = origin
             ? `${origin}/accept-invite`
-            : `https://meubarbeiro.com/accept-invite`; // Fallback para produção se não houver origin confiável
+            : `https://meubarbeiro.com/accept-invite`;
 
         const { data: authData, error: inviteError } = await supabaseClient.auth.admin.inviteUserByEmail(email, {
             data: {
@@ -42,8 +42,6 @@ serve(async (req) => {
 
         if (inviteError) {
             console.error('Error inviting user:', inviteError);
-
-            // Se o usuário já existe, o invite falha. Podemos tentar apenas adicionar os metadados ou retornar erro amigável.
             if (inviteError.message.includes('already been registered')) {
                 return new Response(
                     JSON.stringify({ error: 'Este email já está cadastrado no sistema.' }),
@@ -53,10 +51,8 @@ serve(async (req) => {
             throw inviteError;
         }
 
-        // 2. Criar registro na tabela pública 'users' (caso o trigger não cuide disso ou para garantir)
-        // Nota: Normalmente um Trigger on auth.users cuida disso, mas aqui garantimos a integridade se for um invite novo.
-        // Se o usuário já existe no auth, o inviteUserByEmail não cria novo ID, então o trigger de insert não dispara.
-        // Mas se o usuário é NOVO, o trigger dispara.
+        // 2. Sincronização agora é feita via Trigger no banco de dados (public.handle_new_user)
+
 
         // Retornamos sucesso
         return new Response(
