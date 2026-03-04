@@ -24,16 +24,20 @@ serve(async (req) => {
             throw new Error('Email is required');
         }
 
-        // 1. Convidar usuário via Email (Supabase Auth)
-        // O Supabase enviará o email automaticamente com o link de convite
+        // Detectar a origem (Vite/Produção)
+        const origin = req.headers.get('origin') || req.headers.get('referer');
+        const redirectTo = (origin && !origin.includes('localhost'))
+            ? `${origin}/accept-invite`
+            : `https://meubarbeiro.com/accept-invite`; // Fallback para produção se não houver origin confiável
+
         const { data: authData, error: inviteError } = await supabaseClient.auth.admin.inviteUserByEmail(email, {
             data: {
                 name: name,
                 role: role,
                 tenant_id: tenant_id,
-                status: 'OFFLINE' // Default status
+                status: 'OFFLINE'
             },
-            redirectTo: `${req.headers.get('origin') ?? 'http://localhost:5173'}/accept-invite`
+            redirectTo: redirectTo
         });
 
         if (inviteError) {
