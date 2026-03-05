@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+// Trigger rebuild for Vercel
 import { User, Shield, Activity, AtSign, Key } from 'lucide-react';
 import { Modal, Input, Button } from './UI';
 import { Barber } from '../types';
