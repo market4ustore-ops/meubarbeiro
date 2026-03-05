@@ -252,30 +252,39 @@ const Layout: React.FC<{ role: string, identifier: string, children: React.React
       <Header role={role} identifier={identifier} onToggleSidebar={() => setIsSidebarOpen(true)} />
 
       {/* Global Banners */}
-      {(isAccessBlocked || isReadOnly || showWarningBanner) && (
+      {(isAccessBlocked || isReadOnly || showWarningBanner || isTrialActive) && (
         <div className={`lg:ml-72 px-6 py-2 border-b flex items-center justify-between gap-4 transition-all animate-in slide-in-from-top duration-500 ${(isAccessBlocked || isReadOnly)
           ? 'bg-red-500/10 border-red-500/20 text-red-500'
-          : 'bg-amber-500/10 border-amber-500/20 text-amber-500'}`}
+          : isTrialActive && !showWarningBanner
+            ? 'bg-sky-500/10 border-sky-500/20 text-sky-500' // Blue banner for normal trial days
+            : 'bg-amber-500/10 border-amber-500/20 text-amber-500'}`}
         >
           <div className="flex items-center gap-3">
-            <div className={`p-1 rounded-lg ${isAccessBlocked ? 'bg-red-500/20' : 'bg-amber-500/20'}`}>
-              <AlertTriangle size={16} />
+            <div className={`p-1 rounded-lg ${isAccessBlocked ? 'bg-red-500/20'
+                : isTrialActive && !showWarningBanner ? 'bg-sky-500/20'
+                  : 'bg-amber-500/20'
+              }`}>
+              {isTrialActive && !showWarningBanner ? <Info size={16} /> : <AlertTriangle size={16} />}
             </div>
             <p className="text-sm font-bold">
               {isAccessBlocked
                 ? 'Acesso suspenso. Por favor, regularize sua assinatura para continuar usando o sistema.'
                 : isReadOnly
                   ? `Seu período de ${isTrialActive ? 'teste' : 'assinatura'} expirou. O sistema está em modo de leitura.`
-                  : `Seu período de ${isTrialActive ? 'teste' : 'assinatura'} termina em ${daysRemaining} ${daysRemaining === 1 ? 'dia' : 'dias'}. Evite interrupções renovando agora.`}
+                  : isTrialActive
+                    ? `Você está no período de teste grátis. Restam ${daysRemaining} ${daysRemaining === 1 ? 'dia' : 'dias'} para aproveitar todas as funcionalidades.`
+                    : `Sua assinatura termina em ${daysRemaining} ${daysRemaining === 1 ? 'dia' : 'dias'}. Evite interrupções renovando agora.`}
             </p>
           </div>
           <Link
             to="/admin/assinatura"
             className={`text-xs font-black uppercase tracking-widest px-3 py-1 rounded-lg transition-all ${(isAccessBlocked || isReadOnly)
               ? 'bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/40'
-              : 'bg-amber-500 text-white hover:bg-amber-600 shadow-lg shadow-amber-500/40'}`}
+              : isTrialActive && !showWarningBanner
+                ? 'bg-sky-500 text-white hover:bg-sky-600 shadow-lg shadow-sky-500/40'
+                : 'bg-amber-500 text-white hover:bg-amber-600 shadow-lg shadow-amber-500/40'}`}
           >
-            {(isAccessBlocked || isReadOnly) ? 'Regularizar Agora' : 'Renovar Plano'}
+            {(isAccessBlocked || isReadOnly) ? 'Regularizar Agora' : 'Ver Planos'}
           </Link>
         </div>
       )}
