@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 // Trigger rebuild for Vercel
-import { User, Shield, Activity, AtSign, Key } from 'lucide-react';
+import { User, Shield, Activity, AtSign, Key, CheckCircle2, XCircle } from 'lucide-react';
 import { Modal, Input, Button } from './UI';
 import { Barber } from '../types';
 
@@ -12,6 +12,14 @@ interface BarberModalProps {
   editingBarber?: Barber | null;
   loading?: boolean;
 }
+
+// Componente auxiliar para exibir requisitos da senha
+const RequirementItem: React.FC<{ met: boolean, label: string }> = ({ met, label }) => (
+  <div className={`flex items-center gap-2 text-[10px] font-medium transition-colors ${met ? 'text-emerald-500' : 'text-slate-500'}`}>
+    {met ? <CheckCircle2 size={12} /> : <XCircle size={12} className="opacity-50" />}
+    <span>{label}</span>
+  </div>
+);
 
 export const BarberModal: React.FC<BarberModalProps> = ({
   isOpen,
@@ -26,6 +34,14 @@ export const BarberModal: React.FC<BarberModalProps> = ({
     password: '',
     role: 'BARBER',
     status: 'OFFLINE',
+  });
+
+  // Estado para validações de senha
+  const [passwordCriteria, setPasswordCriteria] = useState({
+    length: false,
+    uppercase: false,
+    number: false,
+    special: false
   });
 
   useEffect(() => {
@@ -47,8 +63,25 @@ export const BarberModal: React.FC<BarberModalProps> = ({
     }
   }, [editingBarber, isOpen]);
 
+  // Validação de senha em tempo real
+  useEffect(() => {
+    const pwd = formData.password || '';
+    setPasswordCriteria({
+      length: pwd.length >= 8,
+      uppercase: /[A-Z]/.test(pwd),
+      number: /[0-9]/.test(pwd),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(pwd)
+    });
+  }, [formData.password]);
+
+  const isPasswordSecure = Object.values(passwordCriteria).every(Boolean);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Se estiver criando novo barbeiro, a senha DEVE ser segura
+    if (!editingBarber && !isPasswordSecure) return;
+
     onSave({
       id: editingBarber?.id || Math.random().toString(36).substr(2, 9),
       ...formData
@@ -83,16 +116,27 @@ export const BarberModal: React.FC<BarberModalProps> = ({
             required
             disabled={!!editingBarber}
           />
-          <Input
-            label={editingBarber ? "Alterar Senha (opcional)" : "Senha de Acesso"}
-            type="password"
-            placeholder="••••••••"
-            icon={<Key size={18} />}
-            value={formData.password}
-            onChange={e => setFormData({ ...formData, password: e.target.value })}
-            required={!editingBarber}
-            minLength={6}
-          />
+          <div className="space-y-2">
+            <Input
+              label={editingBarber ? "Alterar Senha (opcional)" : "Senha de Acesso"}
+              type="password"
+              placeholder="••••••••"
+              icon={<Key size={18} />}
+              value={formData.password}
+              onChange={e => setFormData({ ...formData, password: e.target.value })}
+              required={!editingBarber}
+            />
+
+            {/* Indicadores de requisitos de senha (só mostra se estiver digitando ou se for novo membro) */}
+            {(formData.password || !editingBarber) && (
+              <div className="grid grid-cols-1 gap-1.5 p-3 bg-slate-950/50 rounded-lg border border-slate-800/50">
+                <RequirementItem met={passwordCriteria.length} label="Mínimo 8 caracteres" />
+                <RequirementItem met={passwordCriteria.uppercase} label="Uma letra maiúscula" />
+                <RequirementItem met={passwordCriteria.number} label="Um número" />
+                <RequirementItem met={passwordCriteria.special} label="Um caractere especial" />
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -133,7 +177,12 @@ export const BarberModal: React.FC<BarberModalProps> = ({
 
         <div className="flex gap-3 pt-6 border-t border-slate-800">
           <Button variant="secondary" className="flex-1" type="button" onClick={onClose}>Cancelar</Button>
-          <Button className="flex-1" type="submit" loading={loading}>
+          <Button
+            className="flex-1"
+            type="submit"
+            loading={loading}
+            disabled={!editingBarber && !isPasswordSecure}
+          >
             {editingBarber ? "Salvar Alterações" : "Cadastrar Membro"}
           </Button>
         </div>
