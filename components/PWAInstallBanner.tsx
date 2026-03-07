@@ -1,50 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Download, X, Share, PlusSquare } from 'lucide-react';
 import { Button } from './UI';
+import { usePWA } from '../hooks/usePWA';
 
 const PWAInstallBanner: React.FC = () => {
-    const [installPrompt, setInstallPrompt] = useState<any>(null);
+    const { installPrompt, isIOS, isMobile, isStandalone, promptInstall } = usePWA();
     const [isVisible, setIsVisible] = useState(false);
-    const [isIOS, setIsIOS] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
-        const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
-        const isIOSDevice = /iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream;
-        const isAndroid = /android/i.test(userAgent);
-        const isMobileDevice = isIOSDevice || isAndroid;
-
-        setIsIOS(isIOSDevice);
-        setIsMobile(isMobileDevice);
-
-        // Detect if already in standalone mode
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-            || (window.navigator as any).standalone
-            || document.referrer.includes('android-app://');
-
         if (isStandalone) return;
-
-        setIsIOS(isIOSDevice);
-
-        // Check if user dismissed it recently
-        const dismissedAt = localStorage.getItem('pwa-dismissed-at');
-        if (dismissedAt) {
-            const now = new Date().getTime();
-            const lastDismissed = parseInt(dismissedAt);
-            const oneWeek = 7 * 24 * 60 * 60 * 1000;
-            if (now - lastDismissed < oneWeek) return;
-        }
-
-        // Handle Chrome/Android prompt
-        const handleBeforeInstallPrompt = (e: any) => {
-            e.preventDefault();
-            setInstallPrompt(e);
-            setIsVisible(true);
-        };
 
         // Set visibility if on mobile and not standalone
         if (isMobile && !isStandalone) {
-            // Check dismissal again to be safe
             const dismissedAt = localStorage.getItem('pwa-dismissed-at');
             let shouldShow = true;
             if (dismissedAt) {
@@ -54,24 +21,13 @@ const PWAInstallBanner: React.FC = () => {
             }
             if (shouldShow) setIsVisible(true);
         }
-
-        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-        return () => {
-            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-        };
-    }, []);
+    }, [isMobile, isStandalone]);
 
     const handleInstall = async () => {
-        if (!installPrompt) return;
-
-        installPrompt.prompt();
-        const { outcome } = await installPrompt.userChoice;
-
-        if (outcome === 'accepted') {
+        const success = await promptInstall();
+        if (success) {
             setIsVisible(false);
         }
-        setInstallPrompt(null);
     };
 
     const handleDismiss = () => {
@@ -79,12 +35,11 @@ const PWAInstallBanner: React.FC = () => {
         localStorage.setItem('pwa-dismissed-at', new Date().getTime().toString());
     };
 
-    if (!isVisible) return null;
+    if (!isVisible || isStandalone) return null;
 
     return (
         <div className="fixed bottom-24 left-4 right-4 z-[100] animate-in slide-in-from-bottom duration-500">
             <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl shadow-emerald-500/10 flex flex-col gap-4 relative overflow-hidden">
-                {/* Decorative background element */}
                 <div className="absolute -top-10 -right-10 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
 
                 <button

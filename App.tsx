@@ -23,9 +23,10 @@ import OrdersPage from './pages/OrdersPage';
 import PublicShopPage from './pages/PublicShopPage';
 import AcceptInvitePage from './pages/AcceptInvitePage';
 import { UpgradeModal } from './components/UpgradeModal';
-import { Scissors, LogOut, Menu, Bell, Trash2, Clock, Info, AlertTriangle, CheckCircle, BarChart3, Store } from 'lucide-react';
+import { Scissors, LogOut, Menu, Bell, Trash2, Clock, Info, AlertTriangle, CheckCircle, BarChart3, Store, Download } from 'lucide-react';
 import { NAV_ITEMS, SAAS_NAV_ITEMS } from './constants';
-import { ToastProvider } from './context/ToastContext';
+import { useToast } from './context/ToastContext';
+import { usePWA } from './hooks/usePWA';
 import { NotificationProvider, useNotifications } from './context/NotificationContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useSubscription } from './context/SubscriptionContext';
@@ -33,6 +34,8 @@ import PWAInstallBanner from './components/PWAInstallBanner';
 
 const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, onLogout: () => void }> = ({ role, isOpen, onClose, onLogout }) => {
   const location = useLocation();
+  const { isStandalone, promptInstall, isIOS, installPrompt, isMobile } = usePWA();
+  const { addToast } = useToast();
 
   const getNavItems = () => {
     if (role === 'SUPER_ADMIN') return SAAS_NAV_ITEMS;
@@ -75,6 +78,25 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, on
                 {item.name}
               </Link>
             ))}
+
+            {!isStandalone && isMobile && (
+              <button
+                onClick={async () => {
+                  onClose();
+                  if (isIOS) {
+                    addToast('No iPhone: use o menu Compartilhar > Adicionar à Tela de Início', 'info');
+                  } else if (installPrompt) {
+                    await promptInstall();
+                  } else {
+                    addToast('No Android: use o menu do navegador (⋮) > Instalar aplicativo', 'info');
+                  }
+                }}
+                className="flex items-center gap-3 px-4 py-3 w-full text-left text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/5 rounded-xl transition-all font-bold mt-4 border border-emerald-500/20"
+              >
+                <Download size={20} />
+                Instalar App no Dispositivo
+              </button>
+            )}
           </nav>
 
           <div className="mt-auto pt-6 border-t border-slate-800">
