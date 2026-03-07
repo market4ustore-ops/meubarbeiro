@@ -90,14 +90,14 @@ const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Olá, {user?.name.split(' ')[0]}! 👋</h1>
           <p className="text-slate-400">Aqui está um resumo da sua barbearia hoje.</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => navigate('/admin/agenda')}><Clock size={18} /> Ver Agenda</Button>
-          <Button onClick={() => navigate('/admin/agenda')}><Plus size={18} /> Novo Agendamento</Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" onClick={() => navigate('/admin/agenda')} className="flex-1 sm:flex-none"><Clock size={18} /> Ver Agenda</Button>
+          <Button onClick={() => navigate('/admin/agenda')} className="flex-1 sm:flex-none"><Plus size={18} /> Novo Agendamento</Button>
         </div>
       </div>
 

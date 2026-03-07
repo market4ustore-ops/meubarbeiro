@@ -202,28 +202,30 @@ const Header: React.FC<{ role: string, identifier: string, onToggleSidebar: () =
   const userAvatar = profile?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0f172a&color=10b981`;
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between px-4 md:px-6 py-4 bg-slate-950/80 backdrop-blur-md border-b border-slate-800 lg:ml-72">
-      <button onClick={onToggleSidebar} className="p-2 -ml-2 text-slate-400 lg:hidden">
-        <Menu size={24} />
-      </button>
+    <header className="sticky top-0 z-30 bg-slate-950/80 backdrop-blur-md border-b border-slate-800">
+      <div className="max-w-[1600px] mx-auto flex items-center justify-between px-4 md:px-6 py-4">
+        <button onClick={onToggleSidebar} className="p-2 -ml-2 text-slate-400 lg:hidden">
+          <Menu size={24} />
+        </button>
 
-      <div className="flex items-center gap-4 ml-auto">
-        {/* <NotificationDropdown /> */}
-        <div className="flex items-center gap-3 pl-4 border-l border-slate-800">
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-bold text-white">
-              {displayName}
-            </p>
-            <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider">
-              {role === 'SUPER_ADMIN' ? 'Admin Global' : role === 'OWNER' ? 'Proprietário' : 'Barbeiro'}
-            </p>
-          </div>
-          <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden">
-            <img
-              src={userAvatar}
-              alt="Avatar"
-              className="w-full h-full object-cover"
-            />
+        <div className="flex items-center gap-4 ml-auto">
+          {/* <NotificationDropdown /> */}
+          <div className="flex items-center gap-3 pl-4 border-l border-slate-800">
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-bold text-white">
+                {displayName}
+              </p>
+              <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider">
+                {role === 'SUPER_ADMIN' ? 'Admin Global' : role === 'OWNER' ? 'Proprietário' : 'Barbeiro'}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden">
+              <img
+                src={userAvatar}
+                alt="Avatar"
+                className="w-full h-full object-cover"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -240,8 +242,6 @@ const Layout: React.FC<{ role: string, identifier: string, children: React.React
   const daysRemaining = getDaysRemaining();
   const showWarningBanner = daysRemaining !== null && daysRemaining <= 3;
 
-  // No longer blocking access globally for expired trials/subscriptions
-  // Only blocking if specifically SUSPENDED
   if (isAccessBlocked && location.pathname !== '/admin/assinatura' && role !== 'SUPER_ADMIN') {
     return <Navigate to="/admin/assinatura" replace />;
   }
@@ -249,49 +249,57 @@ const Layout: React.FC<{ role: string, identifier: string, children: React.React
   return (
     <div className="min-h-screen bg-slate-950 overflow-x-hidden">
       <Sidebar role={role} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} onLogout={onLogout} />
-      <Header role={role} identifier={identifier} onToggleSidebar={() => setIsSidebarOpen(true)} />
 
-      {/* Global Banners */}
-      {(isAccessBlocked || isReadOnly || showWarningBanner || isTrialActive) && (
-        <div className={`lg:ml-72 px-6 py-2 border-b flex items-center justify-between gap-4 transition-all animate-in slide-in-from-top duration-500 ${(isAccessBlocked || isReadOnly)
-          ? 'bg-red-500/10 border-red-500/20 text-red-500'
-          : isTrialActive && !showWarningBanner
-            ? 'bg-sky-500/10 border-sky-500/20 text-sky-500' // Blue banner for normal trial days
-            : 'bg-amber-500/10 border-amber-500/20 text-amber-500'}`}
-        >
-          <div className="flex items-center gap-3">
-            <div className={`p-1 rounded-lg ${isAccessBlocked ? 'bg-red-500/20'
-              : isTrialActive && !showWarningBanner ? 'bg-sky-500/20'
-                : 'bg-amber-500/20'
-              }`}>
-              {isTrialActive && !showWarningBanner ? <Info size={16} /> : <AlertTriangle size={16} />}
-            </div>
-            <p className="text-sm font-bold">
-              {isAccessBlocked
-                ? 'Acesso suspenso. Por favor, regularize sua assinatura para continuar usando o sistema.'
-                : isReadOnly
-                  ? `Seu período de ${isTrialActive ? 'teste' : 'assinatura'} expirou. O sistema está em modo de leitura.`
-                  : isTrialActive
-                    ? `Você está no período de teste grátis. Restam ${daysRemaining} ${daysRemaining === 1 ? 'dia' : 'dias'} para aproveitar todas as funcionalidades.`
-                    : `Sua assinatura termina em ${daysRemaining} ${daysRemaining === 1 ? 'dia' : 'dias'}. Evite interrupções renovando agora.`}
-            </p>
-          </div>
-          <Link
-            to="/admin/assinatura"
-            className={`text-xs font-black uppercase tracking-widest px-3 py-1 rounded-lg transition-all ${(isAccessBlocked || isReadOnly)
-              ? 'bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/40'
-              : isTrialActive && !showWarningBanner
-                ? 'bg-sky-500 text-white hover:bg-sky-600 shadow-lg shadow-sky-500/40'
-                : 'bg-amber-500 text-white hover:bg-amber-600 shadow-lg shadow-amber-500/40'}`}
+      <div className="lg:pl-72 flex flex-col min-h-screen transition-all duration-300">
+        <Header role={role} identifier={identifier} onToggleSidebar={() => setIsSidebarOpen(true)} />
+
+        {/* Global Banners */}
+        {(isAccessBlocked || isReadOnly || showWarningBanner || isTrialActive) && (
+          <div className={`px-4 md:px-6 py-2 border-b transition-all animate-in slide-in-from-top duration-500 ${(isAccessBlocked || isReadOnly)
+            ? 'bg-red-500/10 border-red-500/20 text-red-500'
+            : isTrialActive && !showWarningBanner
+              ? 'bg-sky-500/10 border-sky-500/20 text-sky-500'
+              : 'bg-amber-500/10 border-amber-500/20 text-amber-500'}`}
           >
-            {(isAccessBlocked || isReadOnly) ? 'Regularizar Agora' : 'Ver Planos'}
-          </Link>
-        </div>
-      )}
+            <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className={`p-1 rounded-lg ${isAccessBlocked ? 'bg-red-500/20'
+                  : isTrialActive && !showWarningBanner ? 'bg-sky-500/20'
+                    : 'bg-amber-500/20'
+                  }`}>
+                  {isTrialActive && !showWarningBanner ? <Info size={16} /> : <AlertTriangle size={16} />}
+                </div>
+                <p className="text-sm font-bold">
+                  {isAccessBlocked
+                    ? 'Acesso suspenso. Por favor, regularize sua assinatura para continuar usando o sistema.'
+                    : isReadOnly
+                      ? `Seu período de ${isTrialActive ? 'teste' : 'assinatura'} expirou. O sistema está em modo de leitura.`
+                      : isTrialActive
+                        ? `Você está no período de teste grátis. Restam ${daysRemaining} ${daysRemaining === 1 ? 'dia' : 'dias'} para aproveitar todas as funcionalidades.`
+                        : `Sua assinatura termina em ${daysRemaining} ${daysRemaining === 1 ? 'dia' : 'dias'}. Evite interrupções renovando agora.`}
+                </p>
+              </div>
+              <Link
+                to="/admin/assinatura"
+                className={`text-xs font-black uppercase tracking-widest px-3 py-1 rounded-lg transition-all shrink-0 ${(isAccessBlocked || isReadOnly)
+                  ? 'bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/40'
+                  : isTrialActive && !showWarningBanner
+                    ? 'bg-sky-500 text-white hover:bg-sky-600 shadow-lg shadow-sky-500/40'
+                    : 'bg-amber-500 text-white hover:bg-amber-600 shadow-lg shadow-amber-500/40'}`}
+              >
+                {(isAccessBlocked || isReadOnly) ? 'Regularizar Agora' : 'Ver Planos'}
+              </Link>
+            </div>
+          </div>
+        )}
 
-      <main className="lg:ml-72 p-4 md:p-6 pb-20 w-full max-w-7xl mx-auto transition-all duration-300">
-        {children}
-      </main>
+        <main className="p-4 md:p-6 pb-20 flex-1 h-full">
+          <div className="max-w-[1600px] mx-auto h-full">
+            {children}
+          </div>
+        </main>
+      </div>
+
       <UpgradeModal />
     </div>
   );
