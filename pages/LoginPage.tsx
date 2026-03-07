@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Scissors, Eye, EyeOff, LayoutDashboard, UserCircle, User, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Input, Card } from '../components/UI';
@@ -20,6 +20,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  +
+    +  useEffect(() => {
+      +    const params = new URLSearchParams(window.location.hash.split('?')[1]);
+      +    if (params.get('confirmed') === 'true') {
+        +      addToast('Cadastro confirmado com sucesso! Faça login para acessar o painel da sua barbearia', 'success');
+        +      // Limpar os parâmetros da URL sem recarregar a página
+          +      navigate('/login', { replace: true });
+        +    }
+      +  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

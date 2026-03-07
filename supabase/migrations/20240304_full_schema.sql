@@ -279,6 +279,11 @@ BEGIN
     -- 2. Create the owner profile in public.users
     INSERT INTO public.users (id, tenant_id, name, email, role)
     VALUES (p_owner_id, v_tenant_id, p_owner_name, p_owner_email, 'OWNER')
+    ON CONFLICT (id) DO UPDATE SET
+        tenant_id = EXCLUDED.tenant_id,
+        role = EXCLUDED.role,
+        name = EXCLUDED.name,
+        email = EXCLUDED.email
     RETURNING id INTO v_user_id;
 
     RETURN jsonb_build_object(

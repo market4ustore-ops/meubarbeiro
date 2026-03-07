@@ -206,9 +206,9 @@ const RegisterPage: React.FC = () => {
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/login`,
+          emailRedirectTo: `${window.location.origin}/#/login?confirmed=true`,
           data: {
-            name: formData.name,
+            name: formData.ownerName,
             role: 'OWNER'
           }
         }
@@ -249,7 +249,23 @@ const RegisterPage: React.FC = () => {
       addToast('Cadastro realizado com sucesso!', 'success');
     } catch (err: any) {
       console.error('Registration error:', err);
-      addToast(err.message || 'Erro ao realizar cadastro.', 'error');
+
+      let friendlyMessage = 'Erro ao realizar cadastro. Por favor, tente novamente.';
+
+      // Mapeamento de erros técnicos para mensagens amigáveis
+      const errorStr = err.message || '';
+
+      if (errorStr.includes('users_pkey') || errorStr.includes('already been registered')) {
+        friendlyMessage = 'Este e-mail já está cadastrado no sistema. Tente fazer login.';
+      } else if (errorStr.includes('tenants_slug_key') || errorStr.includes('slug')) {
+        friendlyMessage = 'Este link de página já está em uso por outra barbearia. Escolha outro.';
+      } else if (errorStr.includes('tenants_phone_key') || errorStr.includes('phone')) {
+        friendlyMessage = 'Este número de WhatsApp já está cadastrado em outra conta.';
+      } else if (errorStr.includes('confirmation email')) {
+        friendlyMessage = 'Conta criada, mas houve um erro ao enviar o e-mail de confirmação. Por favor, fale com o suporte.';
+      }
+
+      addToast(friendlyMessage, 'error');
     } finally {
       setLoading(false);
     }
