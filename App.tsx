@@ -29,6 +29,7 @@ import { ToastProvider } from './context/ToastContext';
 import { NotificationProvider, useNotifications } from './context/NotificationContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useSubscription } from './context/SubscriptionContext';
+import PWAInstallBanner from './components/PWAInstallBanner';
 
 const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, onLogout: () => void }> = ({ role, isOpen, onClose, onLogout }) => {
   const location = useLocation();
@@ -300,6 +301,7 @@ const Layout: React.FC<{ role: string, identifier: string, children: React.React
       </div>
 
       <UpgradeModal />
+      <PWAInstallBanner />
     </div >
   );
 };
