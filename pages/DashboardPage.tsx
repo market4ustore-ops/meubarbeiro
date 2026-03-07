@@ -55,53 +55,8 @@ const DashboardPage: React.FC = () => {
     );
   }
 
-  const daysRemaining = getDaysRemaining();
-  // Se não tem assinatura paga, é Trial
-  const isTrial = !subscription && user?.role === 'OWNER';
-  const isSubscriptionActive = !!user?.tenant_id && !!subscription;
-  const isExpiringSoon = isSubscriptionActive && daysRemaining !== null && daysRemaining <= 10;
-
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Explicit Trial / Expiration / Warning Banner */}
-      {(isTrial || isTrialExpired || (isSubscriptionActive && isExpiringSoon)) && (
-        <div className={`p-5 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-6 ${isTrialExpired
-          ? 'bg-red-600 text-white border-red-700'
-          : (isTrial && (daysRemaining === null || daysRemaining > 3))
-            ? 'bg-emerald-600 text-white border-emerald-700'
-            : 'bg-amber-600 text-white border-amber-700'
-          }`}>
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-white/20">
-              <Clock size={24} />
-            </div>
-            <div>
-              <p className="font-black text-lg">
-                {isTrialExpired
-                  ? 'Seu período de teste expirou!'
-                  : isTrial
-                    ? `Período de Teste Grátis: ${daysRemaining !== null ? `${daysRemaining} dias restantes` : 'Ativo'}`
-                    : `Sua assinatura expira em ${daysRemaining} dias.`}
-              </p>
-              <p className="text-sm font-medium opacity-90">
-                {isTrialExpired
-                  ? 'Assine agora para continuar usando todos os recursos da sua barbearia.'
-                  : isTrial
-                    ? 'Você está aproveitando todos os recursos do Plano Profissional gratuitamente.'
-                    : 'Renove sua assinatura para evitar interrupções no serviço.'}
-              </p>
-            </div>
-          </div>
-          <Button
-            size="lg"
-            variant="secondary"
-            className="w-full sm:w-auto bg-white text-slate-900 hover:bg-slate-100 font-black shadow-xl shrink-0"
-            onClick={() => navigate('/admin/assinatura')}
-          >
-            {isTrialExpired ? 'Assinar Agora' : 'Ver Detalhes do Plano'}
-          </Button>
-        </div>
-      )}
 
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div>

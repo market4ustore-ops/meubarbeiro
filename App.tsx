@@ -240,8 +240,11 @@ const Layout: React.FC<{ role: string, identifier: string, children: React.React
   const location = useLocation();
 
   const daysRemaining = getDaysRemaining();
-  // Show warning if expiring in 10 days or less, or if in a trial
-  const showWarningBanner = daysRemaining !== null && (daysRemaining <= 10 || isTrialActive || isReadOnly || isAccessBlocked);
+  const isTrial = !subscription && role === 'OWNER';
+  const isExpiringSoon = !!subscription && daysRemaining !== null && daysRemaining <= 10;
+
+  // Show warning if expiring soon, or if in a trial, or blocked/read-only
+  const showWarningBanner = isTrial || isTrialExpired || isExpiringSoon || isReadOnly || isAccessBlocked;
 
   if (isAccessBlocked && location.pathname !== '/admin/assinatura' && role !== 'SUPER_ADMIN') {
     return <Navigate to="/admin/assinatura" replace />;
@@ -255,23 +258,23 @@ const Layout: React.FC<{ role: string, identifier: string, children: React.React
         <div className="sticky top-0 z-40 bg-slate-950 border-b border-slate-800">
           {/* Global Banners */}
           {showWarningBanner && (
-            <div className={`px-4 md:px-6 py-2.5 border-b transition-all duration-500 ${(isAccessBlocked || isReadOnly)
+            <div className={`px-4 md:px-6 py-2.5 border-b transition-all duration-500 ${(isAccessBlocked || isReadOnly || isTrialExpired)
               ? 'bg-red-600 text-white'
-              : (isTrialActive && daysRemaining! > 3)
+              : (isTrial && daysRemaining! > 3)
                 ? 'bg-emerald-600 text-white'
                 : 'bg-amber-600 text-white'}`}
             >
               <div className="w-full max-w-[1600px] mx-auto flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="p-1 rounded-lg bg-white/20">
-                    {isTrialActive && daysRemaining! > 3 ? <Info size={16} /> : <AlertTriangle size={16} />}
+                    {(isTrial && daysRemaining! > 3) ? <Info size={16} /> : <AlertTriangle size={16} />}
                   </div>
                   <p className="text-sm font-bold text-white">
                     {isAccessBlocked
                       ? 'Acesso suspenso. Por favor, regularize sua assinatura para continuar usando o sistema.'
-                      : isReadOnly
-                        ? `Seu período de ${isTrialActive ? 'teste' : 'assinatura'} expirou. O sistema está em modo de leitura.`
-                        : isTrialActive
+                      : (isReadOnly || isTrialExpired)
+                        ? `Seu período de ${isTrial ? 'teste' : 'assinatura'} expirou. O sistema está em modo de leitura.`
+                        : isTrial
                           ? `Você está no período de teste grátis. Restam ${daysRemaining !== null ? `${daysRemaining} ${daysRemaining === 1 ? 'dia' : 'dias'}` : ''} para aproveitar todas as funcionalidades.`
                           : `Sua assinatura termina em ${daysRemaining} ${daysRemaining === 1 ? 'dia' : 'dias'}. Evite interrupções renovando agora.`}
                   </p>
