@@ -203,7 +203,7 @@ const Header: React.FC<{ role: string, identifier: string, onToggleSidebar: () =
 
   return (
     <header className="sticky top-0 z-30 bg-slate-950/80 backdrop-blur-md border-b border-slate-800">
-      <div className="max-w-[1600px] mx-auto flex items-center justify-between px-4 md:px-6 py-4">
+      <div className="w-full max-w-[1600px] mx-auto flex items-center justify-between px-4 md:px-6 py-4">
         <button onClick={onToggleSidebar} className="p-2 -ml-2 text-slate-400 lg:hidden">
           <Menu size={24} />
         </button>
@@ -261,7 +261,7 @@ const Layout: React.FC<{ role: string, identifier: string, children: React.React
               ? 'bg-sky-500/10 border-sky-500/20 text-sky-500'
               : 'bg-amber-500/10 border-amber-500/20 text-amber-500'}`}
           >
-            <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-4">
+            <div className="w-full max-w-[1600px] mx-auto flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className={`p-1 rounded-lg ${isAccessBlocked ? 'bg-red-500/20'
                   : isTrialActive && !showWarningBanner ? 'bg-sky-500/20'
@@ -293,8 +293,8 @@ const Layout: React.FC<{ role: string, identifier: string, children: React.React
           </div>
         )}
 
-        <main className="p-4 md:p-6 pb-20 flex-1 h-full">
-          <div className="max-w-[1600px] mx-auto h-full">
+        <main className="p-4 md:p-6 pb-20 flex-1">
+          <div className="w-full max-w-[1600px] mx-auto">
             {children}
           </div>
         </main>
