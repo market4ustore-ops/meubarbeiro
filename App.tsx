@@ -202,7 +202,7 @@ const Header: React.FC<{ role: string, identifier: string, onToggleSidebar: () =
   const userAvatar = profile?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0f172a&color=10b981`;
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-4 bg-slate-950/80 backdrop-blur-md border-b border-slate-800 lg:ml-72">
+    <header className="sticky top-0 z-30 flex items-center justify-between px-4 md:px-6 py-4 bg-slate-950/80 backdrop-blur-md border-b border-slate-800 lg:ml-72">
       <button onClick={onToggleSidebar} className="p-2 -ml-2 text-slate-400 lg:hidden">
         <Menu size={24} />
       </button>
@@ -261,8 +261,8 @@ const Layout: React.FC<{ role: string, identifier: string, children: React.React
         >
           <div className="flex items-center gap-3">
             <div className={`p-1 rounded-lg ${isAccessBlocked ? 'bg-red-500/20'
-                : isTrialActive && !showWarningBanner ? 'bg-sky-500/20'
-                  : 'bg-amber-500/20'
+              : isTrialActive && !showWarningBanner ? 'bg-sky-500/20'
+                : 'bg-amber-500/20'
               }`}>
               {isTrialActive && !showWarningBanner ? <Info size={16} /> : <AlertTriangle size={16} />}
             </div>

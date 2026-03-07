@@ -429,12 +429,12 @@ const RegisterPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex gap-4">
-                  <Button variant="secondary" className="flex-1" onClick={handleBack} type="button">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                  <Button variant="secondary" className="w-full sm:flex-1 h-12" onClick={handleBack} type="button">
                     <ChevronLeft size={18} /> Voltar
                   </Button>
                   <Button
-                    className="flex-[2] h-12"
+                    className="w-full sm:flex-[2] h-12"
                     type="submit"
                     disabled={!isStep2Valid || loading}
                     isLoading={loading && step === 2}

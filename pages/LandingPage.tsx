@@ -142,7 +142,7 @@ const LandingPage: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-              className="font-black text-white leading-[1.1] tracking-tight text-[3rem] md:text-[3.5rem]"
+              className="font-black text-white leading-[1.1] tracking-tight text-[2.2rem] xs:text-[2.6rem] md:text-[3.5rem]"
             >
               <span className="block">Gerencie sua barbearia pelo celular,</span>
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600">
@@ -155,8 +155,7 @@ const LandingPage: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
-              className="text-slate-400 leading-relaxed max-w-2xl mx-auto font-medium"
-              style={{ fontSize: '1.3rem' }}
+              className="text-slate-400 leading-relaxed max-w-2xl mx-auto font-medium text-lg md:text-xl"
             >
               Sem planilhas, sem papel, sem confusão no WhatsApp. Tudo organizado em um só app simples de usar.
             </motion.p>

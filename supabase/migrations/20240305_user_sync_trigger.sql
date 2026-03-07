@@ -1,3 +1,4 @@
+
 -- Função para lidar com a criação de novos usuários (Sync Auth -> Public)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
@@ -20,8 +21,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Função para lidar com a exclusão de usuários (Sync Auth -> Public)
+CREATE OR REPLACE FUNCTION public.handle_user_delete()
+RETURNS trigger AS $$
+BEGIN
+  DELETE FROM public.users WHERE id = old.id;
+  RETURN old;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Trigger para disparar a função após o insert no auth.users
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Trigger para disparar a função após o delete no auth.users
+DROP TRIGGER IF EXISTS on_auth_user_deleted ON auth.users;
+CREATE TRIGGER on_auth_user_deleted
+  AFTER DELETE ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_user_delete();

@@ -103,7 +103,7 @@ export const Modal: React.FC<ModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose}></div>
       <div className={`relative bg-slate-950 border border-slate-800 rounded-2xl w-full ${maxWidth} shadow-2xl animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col`}>
-        <div className="p-6 border-b border-slate-800 flex justify-between items-center shrink-0">
+        <div className="p-4 md:p-6 border-b border-slate-800 flex justify-between items-center shrink-0">
           <h3 className="text-xl font-bold text-slate-100">{title}</h3>
           <button onClick={onClose} className="p-1 text-slate-500 hover:text-white hover:bg-slate-900 rounded-full transition-colors">
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -111,7 +111,7 @@ export const Modal: React.FC<ModalProps> = ({
             </svg>
           </button>
         </div>
-        <div className="p-6 overflow-y-auto no-scrollbar">{children}</div>
+        <div className="p-4 md:p-6 overflow-y-auto no-scrollbar">{children}</div>
       </div>
     </div>
   );

@@ -100,7 +100,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-7 space-y-6">
+          <form onSubmit={handleSubmit} className="p-5 md:p-7 space-y-6">
             <div className="space-y-1">
               <h2 className="text-xl font-bold text-white">
                 {role === 'OWNER' ? 'Gestão da Barbearia' : 'Acesso do Profissional'}

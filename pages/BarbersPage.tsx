@@ -201,7 +201,7 @@ const BarbersPage: React.FC = () => {
                   <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-4 border-slate-950 flex items-center justify-center ${barber.status === 'ONLINE' ? 'bg-emerald-500' : 'bg-slate-500'}`} title={barber.status}>
                   </div>
                 </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                   <Button
                     variant="secondary"
                     size="sm"
