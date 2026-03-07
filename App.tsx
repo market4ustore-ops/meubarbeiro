@@ -240,7 +240,7 @@ const Layout: React.FC<{ role: string, identifier: string, children: React.React
   const location = useLocation();
 
   const daysRemaining = getDaysRemaining();
-  const showWarningBanner = daysRemaining !== null && daysRemaining <= 3;
+  const showWarningBanner = daysRemaining !== null && daysRemaining <= 7;
 
   if (isAccessBlocked && location.pathname !== '/admin/assinatura' && role !== 'SUPER_ADMIN') {
     return <Navigate to="/admin/assinatura" replace />;
@@ -251,8 +251,6 @@ const Layout: React.FC<{ role: string, identifier: string, children: React.React
       <Sidebar role={role} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} onLogout={onLogout} />
 
       <div className="lg:pl-72 flex flex-col min-h-screen transition-all duration-300">
-        <Header role={role} identifier={identifier} onToggleSidebar={() => setIsSidebarOpen(true)} />
-
         {/* Global Banners */}
         {(isAccessBlocked || isReadOnly || showWarningBanner || isTrialActive) && (
           <div className={`px-4 md:px-6 py-2 border-b transition-all animate-in slide-in-from-top duration-500 ${(isAccessBlocked || isReadOnly)
@@ -292,6 +290,8 @@ const Layout: React.FC<{ role: string, identifier: string, children: React.React
             </div>
           </div>
         )}
+
+        <Header role={role} identifier={identifier} onToggleSidebar={() => setIsSidebarOpen(true)} />
 
         <main className="p-4 md:p-6 pb-20 flex-1">
           <div className="w-full max-w-[1600px] mx-auto">
