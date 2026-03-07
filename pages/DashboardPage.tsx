@@ -55,28 +55,38 @@ const DashboardPage: React.FC = () => {
     );
   }
 
+  const daysRemaining = getDaysRemaining();
+  const isExpiringSoon = daysRemaining !== null && daysRemaining <= 10;
+  const isSubscriptionActive = !!user?.tenant_id && !isTrialActive && !isTrialExpired;
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Trial / Expiration Banner */}
-      {(isTrialActive || isTrialExpired) && (
+      {/* Trial / Expiration / Warning Banner */}
+      {(isTrialActive || isTrialExpired || (isSubscriptionActive && isExpiringSoon)) && (
         <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-500 ${isTrialExpired
           ? 'bg-red-500/10 border-red-500/20 text-red-500'
-          : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
+          : (isTrialActive && daysRemaining! > 3)
+            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
+            : 'bg-amber-500/10 border-amber-500/20 text-amber-500'
           }`}>
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-xl ${isTrialExpired ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'}`}>
+            <div className={`p-2 rounded-xl ${(isTrialExpired || (isSubscriptionActive && isExpiringSoon && daysRemaining! <= 3)) ? 'bg-red-500 text-white' : (isTrialActive && daysRemaining! > 3) ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>
               <Clock size={20} />
             </div>
             <div>
               <p className="font-bold text-sm">
                 {isTrialExpired
                   ? 'Seu período de teste expirou!'
-                  : `Você está no período de teste: ${getDaysRemaining()} dias restantes.`}
+                  : isTrialActive
+                    ? `Você está no período de teste: ${daysRemaining} dias restantes.`
+                    : `Sua assinatura expira em ${daysRemaining} dias.`}
               </p>
               <p className="text-xs opacity-80">
                 {isTrialExpired
                   ? 'Assine agora para continuar usando todos os recursos da sua barbearia.'
-                  : 'Aproveite todos os recursos do Plano Profissional gratuitamente.'}
+                  : isTrialActive
+                    ? 'Aproveite todos os recursos do Plano Profissional gratuitamente.'
+                    : 'Renove sua assinatura para evitar interrupções no serviço.'}
               </p>
             </div>
           </div>
