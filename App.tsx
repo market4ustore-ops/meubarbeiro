@@ -236,7 +236,7 @@ const Header: React.FC<{ role: string, identifier: string, onToggleSidebar: () =
 
 const Layout: React.FC<{ role: string, identifier: string, children: React.ReactNode, onLogout: () => void }> = ({ role, identifier, children, onLogout }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { isAccessBlocked, isReadOnly, getDaysRemaining, isTrialActive } = useSubscription();
+  const { isAccessBlocked, isReadOnly, isTrialActive, isTrialExpired, getDaysRemaining, subscription } = useSubscription();
   const location = useLocation();
 
   const daysRemaining = getDaysRemaining();
@@ -255,7 +255,7 @@ const Layout: React.FC<{ role: string, identifier: string, children: React.React
         <div className="sticky top-0 z-40 bg-slate-950 border-b border-slate-800">
           {/* Global Banners */}
           {showWarningBanner && (
-            <div className={`px-4 md:px-6 py-2.5 border-b transition-all animate-in slide-in-from-top duration-500 ${(isAccessBlocked || isReadOnly)
+            <div className={`px-4 md:px-6 py-2.5 border-b transition-all duration-500 ${(isAccessBlocked || isReadOnly)
               ? 'bg-red-600 text-white'
               : (isTrialActive && daysRemaining! > 3)
                 ? 'bg-emerald-600 text-white'
@@ -266,13 +266,13 @@ const Layout: React.FC<{ role: string, identifier: string, children: React.React
                   <div className="p-1 rounded-lg bg-white/20">
                     {isTrialActive && daysRemaining! > 3 ? <Info size={16} /> : <AlertTriangle size={16} />}
                   </div>
-                  <p className="text-sm font-bold">
+                  <p className="text-sm font-bold text-white">
                     {isAccessBlocked
                       ? 'Acesso suspenso. Por favor, regularize sua assinatura para continuar usando o sistema.'
                       : isReadOnly
                         ? `Seu período de ${isTrialActive ? 'teste' : 'assinatura'} expirou. O sistema está em modo de leitura.`
                         : isTrialActive
-                          ? `Você está no período de teste grátis. Restam ${daysRemaining} ${daysRemaining === 1 ? 'dia' : 'dias'} para aproveitar todas as funcionalidades.`
+                          ? `Você está no período de teste grátis. Restam ${daysRemaining !== null ? `${daysRemaining} ${daysRemaining === 1 ? 'dia' : 'dias'}` : ''} para aproveitar todas as funcionalidades.`
                           : `Sua assinatura termina em ${daysRemaining} ${daysRemaining === 1 ? 'dia' : 'dias'}. Evite interrupções renovando agora.`}
                   </p>
                 </div>

@@ -107,6 +107,12 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 const endsAt = new Date(tenantData.trial_ends_at);
                 setTrialEndsAt(endsAt);
                 setIsTrialExpired(endsAt < new Date() && tenantData.status === 'TRIAL');
+            } else if (!subData && (tenantData.status === 'TRIAL' || tenantData.status === 'ACTIVE')) {
+                // FALLBACK: If no subscription and no trial date, assume a 7-day trial from creation or now
+                const fallbackDate = new Date();
+                fallbackDate.setDate(fallbackDate.getDate() + 7);
+                setTrialEndsAt(fallbackDate);
+                setIsTrialExpired(false);
             } else {
                 setTrialEndsAt(null);
                 setIsTrialExpired(false);
@@ -174,7 +180,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }, [profile?.tenant_id, fetchSubscription]);
 
     // Helper for active trial
-    const isTrialActive = !!trialEndsAt && trialEndsAt > new Date() && !subscription && tenantStatus === 'TRIAL';
+    // Helper for active trial - More inclusive
+    const isTrialActive = !subscription && (tenantStatus === 'TRIAL' || tenantStatus === 'ACTIVE') && (!!trialEndsAt && trialEndsAt > new Date());
 
     // Helper for read-only mode (expired but not suspended)
     const isReadOnly = (isTrialExpired || isSubscriptionExpired) && tenantStatus !== 'SUSPENDED';

@@ -22,7 +22,7 @@ import { useSubscription } from '../context/SubscriptionContext';
 
 const DashboardPage: React.FC = () => {
   const { profile: user } = useAuth();
-  const { isTrialActive, isTrialExpired, getDaysRemaining } = useSubscription();
+  const { isTrialActive, isTrialExpired, getDaysRemaining, subscription } = useSubscription();
   const { addToast } = useToast();
   const navigate = useNavigate();
   const [stats, setStats] = useState<any>(null);
@@ -56,43 +56,46 @@ const DashboardPage: React.FC = () => {
   }
 
   const daysRemaining = getDaysRemaining();
-  const isExpiringSoon = daysRemaining !== null && daysRemaining <= 10;
-  const isSubscriptionActive = !!user?.tenant_id && !isTrialActive && !isTrialExpired;
+  // Se não tem assinatura paga, é Trial
+  const isTrial = !subscription && user?.role === 'OWNER';
+  const isSubscriptionActive = !!user?.tenant_id && !!subscription;
+  const isExpiringSoon = isSubscriptionActive && daysRemaining !== null && daysRemaining <= 10;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Trial / Expiration / Warning Banner */}
-      {(isTrialActive || isTrialExpired || (isSubscriptionActive && isExpiringSoon)) && (
-        <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-500 ${isTrialExpired
-          ? 'bg-red-500/10 border-red-500/20 text-red-500'
-          : (isTrialActive && daysRemaining! > 3)
-            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
-            : 'bg-amber-500/10 border-amber-500/20 text-amber-500'
+      {/* Explicit Trial / Expiration / Warning Banner */}
+      {(isTrial || isTrialExpired || (isSubscriptionActive && isExpiringSoon)) && (
+        <div className={`p-5 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-6 ${isTrialExpired
+          ? 'bg-red-600 text-white border-red-700'
+          : (isTrial && (daysRemaining === null || daysRemaining > 3))
+            ? 'bg-emerald-600 text-white border-emerald-700'
+            : 'bg-amber-600 text-white border-amber-700'
           }`}>
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-xl ${(isTrialExpired || (isSubscriptionActive && isExpiringSoon && daysRemaining! <= 3)) ? 'bg-red-500 text-white' : (isTrialActive && daysRemaining! > 3) ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>
-              <Clock size={20} />
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-2xl bg-white/20">
+              <Clock size={24} />
             </div>
             <div>
-              <p className="font-bold text-sm">
+              <p className="font-black text-lg">
                 {isTrialExpired
                   ? 'Seu período de teste expirou!'
-                  : isTrialActive
-                    ? `Você está no período de teste: ${daysRemaining} dias restantes.`
+                  : isTrial
+                    ? `Período de Teste Grátis: ${daysRemaining !== null ? `${daysRemaining} dias restantes` : 'Ativo'}`
                     : `Sua assinatura expira em ${daysRemaining} dias.`}
               </p>
-              <p className="text-xs opacity-80">
+              <p className="text-sm font-medium opacity-90">
                 {isTrialExpired
                   ? 'Assine agora para continuar usando todos os recursos da sua barbearia.'
-                  : isTrialActive
-                    ? 'Aproveite todos os recursos do Plano Profissional gratuitamente.'
+                  : isTrial
+                    ? 'Você está aproveitando todos os recursos do Plano Profissional gratuitamente.'
                     : 'Renove sua assinatura para evitar interrupções no serviço.'}
               </p>
             </div>
           </div>
           <Button
-            size="sm"
-            variant={isTrialExpired ? 'danger' : 'success'}
+            size="lg"
+            variant="secondary"
+            className="w-full sm:w-auto bg-white text-slate-900 hover:bg-slate-100 font-black shadow-xl shrink-0"
             onClick={() => navigate('/admin/assinatura')}
           >
             {isTrialExpired ? 'Assinar Agora' : 'Ver Detalhes do Plano'}
