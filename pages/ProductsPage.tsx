@@ -147,7 +147,7 @@ const ProductsPage: React.FC = () => {
       <div className="space-y-6 animate-in fade-in duration-500">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">Produtos e Estoque</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-white">Produtos e Estoque</h1>
             <p className="text-slate-400">Controle suas vendas e reposições de produtos.</p>
           </div>
           <Button onClick={handleAddProduct}><Plus size={18} /> Novo Produto</Button>
@@ -194,86 +194,149 @@ const ProductsPage: React.FC = () => {
             <p className="font-medium animate-pulse">Carregando estoque...</p>
           </div>
         ) : (
-          <Card>
-            <div className="overflow-x-auto no-scrollbar">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-slate-800 bg-slate-900/50">
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Produto</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Categoria</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Preço</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Estoque</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {filteredProducts.length > 0 ? (
-                    filteredProducts.map((product) => (
-                      <tr key={product.id} className="hover:bg-slate-800/30 transition-colors group">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={product.image || 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=200'}
-                              className="w-10 h-10 rounded-lg object-cover border border-slate-700"
-                              alt={product.name}
-                            />
-                            <span className="font-semibold text-slate-200">{product.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <Badge variant="info">{product.category}</Badge>
-                        </td>
-                        <td className="px-6 py-4 font-medium text-slate-300">
-                          R$ {product.price.toFixed(2)}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-24 h-2 bg-slate-800 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-500 ${product.stock <= product.minStock ? 'bg-red-500' : 'bg-emerald-500'}`}
-                                style={{ width: `${Math.min((product.stock / (product.minStock * 2)) * 100, 100)}%` }}
-                              ></div>
+          <div className="space-y-4">
+            {/* Desktop Table View */}
+            <Card className="hidden md:block overflow-hidden">
+              <div className="overflow-x-auto no-scrollbar">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="border-b border-slate-800 bg-slate-900/50">
+                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Produto</th>
+                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Categoria</th>
+                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Preço</th>
+                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Estoque</th>
+                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {filteredProducts.length > 0 ? (
+                      filteredProducts.map((product) => (
+                        <tr key={product.id} className="hover:bg-slate-800/30 transition-colors group">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={product.image || 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=200'}
+                                className="w-10 h-10 rounded-lg object-cover border border-slate-700"
+                                alt={product.name}
+                              />
+                              <span className="font-semibold text-slate-200">{product.name}</span>
                             </div>
-                            <span className={`text-sm font-bold min-w-[60px] ${product.stock <= product.minStock ? 'text-red-500' : 'text-slate-400'}`}>
-                              {product.stock} unid.
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => handleEditProduct(product)}
-                              className="p-2"
-                              title="Editar"
-                            >
-                              <Edit2 size={16} />
-                            </Button>
-                            <Button
-                              variant="danger"
-                              size="sm"
-                              onClick={() => handleDeleteProduct(product.id)}
-                              className="p-2"
-                              title="Excluir"
-                            >
-                              <Trash2 size={16} />
-                            </Button>
-                          </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <Badge variant="info">{product.category}</Badge>
+                          </td>
+                          <td className="px-6 py-4 font-medium text-slate-300">
+                            R$ {product.price.toFixed(2)}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 h-2 bg-slate-800 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-500 ${product.stock <= product.minStock ? 'bg-red-500' : 'bg-emerald-500'}`}
+                                  style={{ width: `${Math.min((product.stock / (product.minStock * 2)) * 100, 100)}%` }}
+                                ></div>
+                              </div>
+                              <span className={`text-sm font-bold min-w-[60px] ${product.stock <= product.minStock ? 'text-red-500' : 'text-slate-400'}`}>
+                                {product.stock} unid.
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex justify-end gap-2 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleEditProduct(product)}
+                                className="p-2"
+                                title="Editar"
+                              >
+                                <Edit2 size={16} />
+                              </Button>
+                              <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={() => handleDeleteProduct(product.id)}
+                                className="p-2"
+                                title="Excluir"
+                              >
+                                <Trash2 size={16} />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                          Nenhum produto encontrado.
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                        Nenhum produto encontrado.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
+            {/* Mobile Card View */}
+            <div className="grid grid-cols-1 gap-4 md:hidden">
+              {filteredProducts.length > 0 ? (
+                filteredProducts.map((product) => (
+                  <Card key={product.id} className="p-4 bg-slate-900 border-slate-800/50 space-y-4">
+                    <div className="flex items-center gap-4">
+                      <img
+                        src={product.image || 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=200'}
+                        className="w-16 h-16 rounded-xl object-cover border border-slate-700"
+                        alt={product.name}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="font-bold text-white truncate">{product.name}</h3>
+                          <Badge variant="info">{product.category}</Badge>
+                        </div>
+                        <p className="text-emerald-500 font-bold mt-1">R$ {product.price.toFixed(2)}</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-500">
+                        <span>Estoque</span>
+                        <span className={product.stock <= product.minStock ? 'text-red-500' : 'text-slate-400'}>
+                          {product.stock} unidades
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${product.stock <= product.minStock ? 'bg-red-500' : 'bg-emerald-500'}`}
+                          style={{ width: `${Math.min((product.stock / (product.minStock * 2)) * 100, 100)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        variant="secondary"
+                        className="flex-1"
+                        onClick={() => handleEditProduct(product)}
+                      >
+                        <Edit2 size={16} className="mr-2" /> Editar
+                      </Button>
+                      <Button
+                        variant="danger"
+                        className="flex-1"
+                        onClick={() => handleDeleteProduct(product.id)}
+                      >
+                        <Trash2 size={16} className="mr-2" /> Excluir
+                      </Button>
+                    </div>
+                  </Card>
+                ))
+              ) : (
+                <Card className="p-12 text-center text-slate-500">
+                  Nenhum produto encontrado.
+                </Card>
+              )}
             </div>
-          </Card>
+          </div>
         )}
 
         <ProductModal

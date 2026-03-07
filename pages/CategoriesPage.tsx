@@ -111,7 +111,7 @@ const CategoriesPage: React.FC = () => {
                   >
                     <Tag size={24} />
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-1 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                     <Button
                       variant="secondary"
                       size="sm"

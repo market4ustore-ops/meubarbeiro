@@ -342,7 +342,7 @@ const OrdersPage: React.FC = () => {
                     )}
                     <Button
                       variant="ghost"
-                      className="p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="p-2 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity"
                       onClick={(e) => { e.stopPropagation(); openOrderDetail(order); }}
                     >
                       <Eye size={18} />
