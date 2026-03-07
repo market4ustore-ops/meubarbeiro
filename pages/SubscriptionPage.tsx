@@ -180,7 +180,7 @@ const SubscriptionPage: React.FC = () => {
                     </p>
                   )}
                   {getDaysRemaining() !== null && (
-                    <p className={`text-sm font-bold flex items-center gap-1 ${getDaysRemaining()! <= 3 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                    <p className={`text-sm font-bold flex items-center gap-1 ${getDaysRemaining()! <= 7 ? 'text-amber-500' : 'text-emerald-500'}`}>
                       <Info size={14} />
                       {isTrialActive ? 'Trial: ' : 'Expira em: '}
                       {getDaysRemaining()} {getDaysRemaining() === 1 ? 'dia' : 'dias'}
