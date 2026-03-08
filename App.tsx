@@ -5,6 +5,7 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import SaaSLoginPage from './pages/SaaSLoginPage';
 import RegisterPage from './pages/RegisterPage';
+import EmailConfirmedPage from './pages/EmailConfirmedPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import DashboardPage from './pages/DashboardPage';
@@ -328,6 +329,7 @@ const App: React.FC = () => {
         <Route path="/" element={!user ? <LandingPage /> : <Navigate to={role === 'SUPER_ADMIN' ? "/saas/dashboard" : "/admin/dashboard"} replace />} />
         <Route path="/shop/:slug" element={<PublicShopPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/confirmacao-email" element={<EmailConfirmedPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/accept-invite" element={<AcceptInvitePage />} />

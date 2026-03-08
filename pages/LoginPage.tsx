@@ -21,16 +21,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    // Para HashRouter, os parâmetros ficam após o #
-    const hash = window.location.hash;
-    const queryString = hash.includes('?') ? hash.split('?')[1] : '';
-    const params = new URLSearchParams(queryString);
-
-    if (params.get('confirmed') === 'true') {
-      addToast('Cadastro confirmado com sucesso! Faça login para acessar o painel da sua barbearia', 'success');
-      // Limpar os parâmetros da URL sem recarregar a página
-      navigate('/login', { replace: true });
-    }
+    // Legacy logic removed as it's now handled by EmailConfirmedPage
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

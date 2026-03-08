@@ -206,7 +206,7 @@ const RegisterPage: React.FC = () => {
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/#/login?confirmed=true`,
+          emailRedirectTo: `${window.location.origin}/#/confirmacao-email`,
           data: {
             name: formData.ownerName,
             role: 'OWNER'
