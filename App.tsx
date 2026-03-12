@@ -9,6 +9,7 @@ import EmailConfirmedPage from './pages/EmailConfirmedPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import DashboardPage from './pages/DashboardPage';
+import POSPage from './pages/POSPage';
 import SaaSDashboardPage from './pages/SaaSDashboardPage';
 import BarberShopsListPage from './pages/BarberShopsListPage';
 import SaaSPlansPage from './pages/SaaSPlansPage';
@@ -23,6 +24,9 @@ import SettingsPage from './pages/SettingsPage';
 import OrdersPage from './pages/OrdersPage';
 import PublicShopPage from './pages/PublicShopPage';
 import AcceptInvitePage from './pages/AcceptInvitePage';
+import ClientsPage from './pages/ClientsPage';
+import ClientDetailPage from './pages/ClientDetailPage';
+import FinancialPage from './pages/FinancialPage';
 import { UpgradeModal } from './components/UpgradeModal';
 import { Scissors, LogOut, Menu, Bell, Trash2, Clock, Info, AlertTriangle, CheckCircle, BarChart3, Store } from 'lucide-react';
 import { NAV_ITEMS, SAAS_NAV_ITEMS } from './constants';
@@ -38,7 +42,9 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, on
     if (role === 'SUPER_ADMIN') return SAAS_NAV_ITEMS;
     if (role === 'BARBER') {
       return NAV_ITEMS.filter(item =>
+        item.path === '/admin/atendimento' ||
         item.path === '/admin/agenda' ||
+        item.path === '/admin/clientes' ||
         item.path === '/admin/configuracoes'
       );
     }
@@ -358,7 +364,10 @@ const App: React.FC = () => {
                 {role && role !== 'SUPER_ADMIN' && (
                   <>
                     <Route path="/admin/dashboard" element={role === 'OWNER' ? <DashboardPage /> : <Navigate to="/admin/agenda" replace />} />
+                    <Route path="/admin/atendimento" element={<POSPage />} />
                     <Route path="/admin/agenda" element={<AgendaPage />} />
+                    <Route path="/admin/clientes" element={<ClientsPage />} />
+                    <Route path="/admin/clientes/:id" element={<ClientDetailPage />} />
                     <Route path="/admin/configuracoes" element={<SettingsPage />} />
                     {role === 'OWNER' && (
                       <>
@@ -366,6 +375,7 @@ const App: React.FC = () => {
                         <Route path="/admin/servicos" element={<ServicesPage />} />
                         <Route path="/admin/produtos" element={<ProductsPage />} />
                         <Route path="/admin/pedidos" element={<OrdersPage />} />
+                        <Route path="/admin/financeiro" element={<FinancialPage />} />
                         <Route path="/admin/categorias" element={<CategoriesPage />} />
                         <Route path="/admin/assinatura" element={<SubscriptionPage />} />
                       </>

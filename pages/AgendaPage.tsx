@@ -1,34 +1,44 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Plus,
-  Search,
-  Lock,
+  Search as SearchIcon,
+ // Keep Search, remove Search as SearchIcon
+  Lock, // Keep one Lock
   Calendar as CalendarIcon,
   Clock,
-  CheckCircle2,
+  CheckCircle2, // Keep one CheckCircle2
   XCircle,
   Edit,
   User as UserIcon,
   ChevronLeft,
   ChevronRight,
-  LayoutGrid,
-  List as ListIcon,
+  LayoutGrid, // Keep one LayoutGrid
+  List as ListIcon, // Keep one List as ListIcon
   Users,
-  Search as SearchIcon,
   Filter,
   Phone,
-  Scissors
+  Scissors,
+  UserCheck,
+  AlertCircle,
+  Eye,
+  Zap,
+  Settings
 } from 'lucide-react';
-import { Card, Button, Input, Badge, Modal } from '../components/UI';
-import { AppointmentStatus, AppointmentStatusLabels } from '../types';
+import { Card, Button, Input, Badge, Modal, EmptyState } from '../components/UI';
+import { ClientSelect } from '../components/ClientSelect';
+import { ClientModal } from '../components/ClientModal';
+import { CheckoutModal } from '../components/CheckoutModal';
+import { AppointmentStatus, AppointmentStatusLabels, Client } from '../types';
 import { useToast } from '../context/ToastContext';
 import { useNotifications } from '../context/NotificationContext';
-import { supabase, getOpeningHoursByTenant, getAppointmentsByDate } from '../lib/supabase';
+import { supabase, getOpeningHoursByTenant, getAppointmentsByDate, processSale } from '../lib/supabase'; // Added processSale
 import { useAuth } from '../context/AuthContext';
 
 const AgendaPage: React.FC = () => {
   const { profile } = useAuth();
   const { addToast } = useToast();
+  const navigate = useNavigate();
   const { addNotification } = useNotifications();
   const [appointments, setAppointments] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
@@ -49,6 +59,15 @@ const AgendaPage: React.FC = () => {
   const [formDate, setFormDate] = useState('');
   const [formBarber, setFormBarber] = useState('');
   const [formServiceId, setFormServiceId] = useState('');
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [clientName, setClientName] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
+  const [isClientModalOpen, setIsClientModalOpen] = useState(false);
+  const [savingClient, setSavingClient] = useState(false);
+  
+  // Checkout POS State
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+  const [checkoutAppointment, setCheckoutAppointment] = useState<any | null>(null);
 
   const fetchAgendaData = async () => {
     if (!profile?.tenant_id) return;
@@ -101,6 +120,52 @@ const AgendaPage: React.FC = () => {
     } catch (err: any) {
       console.error('Error fetching agenda data:', err);
       addToast('Erro ao carregar agenda.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleQuickCheckout = async (apt: any) => {
+    if (!profile?.tenant_id) return;
+    if (!confirm(`Finalizar atendimento de ${apt.client_name} agora? (Pagamento via PIX)`)) return;
+
+    setLoading(true);
+    try {
+      const service = services.find(s => s.id === apt.service_id);
+      const barber = barbers.find(b => b.id === apt.barber_id);
+      const servicePrice = service?.price || 0;
+      const commissionAmount = barber?.commission_rate ? (servicePrice * barber.commission_rate) / 100 : 0;
+
+      await processSale({
+        transaction: {
+          tenant_id: profile.tenant_id,
+          type: 'INCOME',
+          category: 'Finalização Rápida',
+          amount: servicePrice,
+          description: `Checkout Rápido - ${service?.name || 'Serviço'}`,
+          date: new Date().toISOString().split('T')[0],
+          status: 'PAID',
+          client_id: apt.client_id || null,
+          barber_id: apt.barber_id,
+          appointment_id: apt.id,
+          payment_method: 'PIX',
+          items: [{
+            type: 'SERVICE',
+            id: apt.service_id,
+            name: service?.name || 'Serviço',
+            price: servicePrice,
+            quantity: 1
+          }],
+          commission_amount: commissionAmount
+        },
+        appointmentId: apt.id,
+        inventoryItems: []
+      });
+
+      addToast('Atendimento finalizado com sucesso!', 'success');
+      fetchAgendaData();
+    } catch (err: any) {
+      addToast('Erro ao finalizar rápido: ' + err.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -235,10 +300,16 @@ const AgendaPage: React.FC = () => {
       setFormDate(apt.date);
       setFormBarber(apt.barber_id || '');
       setFormServiceId(apt.service_id || '');
+      setSelectedClientId(apt.client_id || '');
+      setClientName(apt.client_name || '');
+      setClientPhone(apt.client_phone || '');
     } else {
       setFormDate(selectedDate); // Default to current view date
       setFormBarber(profile?.role === 'BARBER' ? profile.id : '');
       setFormServiceId(services[0]?.id || '');
+      setSelectedClientId('');
+      setClientName('');
+      setClientPhone('');
     }
 
     setIsModalOpen(true);
@@ -253,8 +324,9 @@ const AgendaPage: React.FC = () => {
     const selectedSvc = services.find(s => s.id === serviceId);
 
     const appointmentData = {
-      client_name: formData.get('clientName') as string,
-      client_phone: formData.get('clientPhone') as string,
+      client_id: selectedClientId || null,
+      client_name: clientName,
+      client_phone: clientPhone,
       service_id: serviceId,
       service_ids: [serviceId],
       total_duration: Number(selectedSvc?.duration) || 30,
@@ -352,6 +424,42 @@ const AgendaPage: React.FC = () => {
       addToast('Erro ao atualizar status.', 'error');
     } finally {
       setStatusLoading(false);
+    }
+  };
+
+  const handleQuickSaveClient = async (clientData: Partial<Client>, barberIds: string[]) => {
+    if (!profile?.tenant_id) return;
+    setSavingClient(true);
+    try {
+      const { data, error } = await (supabase
+        .from('clients' as any)
+        .insert({
+          ...clientData,
+          tenant_id: profile.tenant_id
+        })
+        .select() as any)
+        .single();
+
+      if (error) throw error;
+
+      // Handle barber links if any
+      if (barberIds.length > 0) {
+        const links = barberIds.map(bid => ({
+          client_id: (data as any).id,
+          barber_id: bid,
+          tenant_id: profile.tenant_id
+        }));
+        await (supabase.from('client_barbers' as any).insert(links) as any);
+      }
+
+      setSelectedClientId((data as any).id);
+      setIsClientModalOpen(false);
+      addToast('Cliente cadastrado!', 'success');
+    } catch (err) {
+      console.error('Error saving quick client:', err);
+      addToast('Erro ao cadastrar cliente.', 'error');
+    } finally {
+      setSavingClient(false);
     }
   };
 
@@ -476,7 +584,7 @@ const AgendaPage: React.FC = () => {
               const dateStr = d.toISOString().split('T')[0];
               const dayLabel = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'][i];
 
-              const dayApts = filteredAppointments.filter(a => a.date === dateStr).sort((a, b) => a.time.localeCompare(b.time));
+              const dayApts = filteredAppointments.filter(a => a.date === dateStr).sort((a, b) => b.time.localeCompare(a.time));
 
               return (
                 <div key={dateStr} className="bg-slate-900/90 min-h-[600px] p-3 space-y-4">
@@ -497,7 +605,28 @@ const AgendaPage: React.FC = () => {
                           }`}
                       >
                         <p className="text-[9px] font-bold text-slate-500">{apt.time}</p>
-                        <h6 className="text-xs font-bold text-slate-100 truncate">{apt.client_name}</h6>
+                        <div className="flex items-center justify-between mt-1">
+                          <h6 
+                            className="text-xs font-bold text-slate-100 truncate hover:text-emerald-400 transition-colors flex-1"
+                            onClick={(e) => {
+                              if (apt.client_id) { // Changed apt.clientId to apt.client_id
+                                e.stopPropagation();
+                                navigate(`/admin/clientes/${apt.client_id}`); // Changed apt.clientId to apt.client_id
+                              }
+                            }}
+                          >
+                            {apt.client_name}
+                          </h6>
+                          {apt.status !== 'COMPLETED' && (
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); handleQuickCheckout(apt); }}
+                              className="p-1 text-slate-600 hover:text-emerald-500 transition-colors"
+                              title="Finalização Rápida (1-clique)"
+                            >
+                              <Zap size={10} fill="currentColor" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                     <Button
@@ -515,12 +644,16 @@ const AgendaPage: React.FC = () => {
         ) : (
           <div className="space-y-3">
             {filteredAppointments.length === 0 ? (
-              <Card className="p-20 text-center border-slate-800/50 bg-slate-900/20">
-                <div className="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CalendarIcon className="text-slate-600" />
-                </div>
-                <p className="text-slate-400 font-medium italic">Nenhum atendimento para os filtros selecionados.</p>
-              </Card>
+              <EmptyState 
+                icon={<CalendarIcon size={32} />}
+                title="Sua agenda está livre"
+                description="Não encontramos agendamentos para os filtros selecionados. Que tal cadastrar um novo?"
+                action={
+                  <Button variant="secondary" onClick={() => handleOpenModal()}>
+                    <Plus size={16} /> Novo Agendamento
+                  </Button>
+                }
+              />
             ) : (
               filteredAppointments.map(apt => (
                 <Card key={apt.id} className="p-4 bg-slate-900 border-slate-800/50 flex flex-col sm:flex-row justify-between items-center gap-4 hover:border-emerald-500/30 transition-all group">
@@ -529,7 +662,18 @@ const AgendaPage: React.FC = () => {
                       <Clock size={24} />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-bold text-white group-hover:text-emerald-500 transition-colors uppercase tracking-tight">{apt.client_name}</h4>
+                      <h4 className="font-bold text-white group-hover:text-emerald-500 transition-colors uppercase tracking-tight flex items-center gap-2">
+                        {apt.client_name}
+                        {apt.client_id && (
+                          <Link 
+                            to={`/admin/clientes/${apt.client_id}`} 
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-1 hover:bg-slate-800 rounded text-slate-500 hover:text-emerald-500 transition-all"
+                          >
+                            <Eye size={14} />
+                          </Link>
+                        )}
+                      </h4>
                       <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mt-1">
                         <span className="flex items-center gap-1 font-bold"><CalendarIcon size={12} /> {new Date(apt.date).toLocaleDateString('pt-BR')}</span>
                         <span className="flex items-center gap-1 font-bold"><Clock size={12} /> {apt.time} ({apt.total_duration}m)</span>
@@ -541,7 +685,33 @@ const AgendaPage: React.FC = () => {
                     <Badge variant={apt.status === 'CONFIRMED' ? 'success' : apt.status === 'COMPLETED' ? 'info' : 'warning'}>
                       {apt.status ? AppointmentStatusLabels[apt.status as AppointmentStatus] : ''}
                     </Badge>
-                    <Button variant="ghost" className="p-2 bg-slate-800/50 hover:bg-emerald-500/10" onClick={() => handleOpenModal(apt)}><Edit size={16} /></Button>
+                    <div className="flex gap-2">
+                       {apt.status !== 'COMPLETED' && (
+                          <div className="flex gap-1">
+                            <Button 
+                              variant="primary" 
+                              size="sm" 
+                              className="bg-emerald-600 hover:bg-emerald-500 text-[10px] font-black h-8 px-2"
+                              onClick={() => {
+                                setCheckoutAppointment(apt);
+                                setIsCheckoutModalOpen(true);
+                              }}
+                            >
+                              FINALIZAR
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="bg-slate-800 hover:bg-emerald-500/20 text-emerald-500 h-8 px-2"
+                              onClick={() => handleQuickCheckout(apt)}
+                              title="Checkout 1-Clique"
+                            >
+                              <Zap size={14} fill="currentColor" />
+                            </Button>
+                          </div>
+                        )}
+                        <Button variant="ghost" className="p-2 bg-slate-800/50 hover:bg-emerald-500/10" onClick={() => handleOpenModal(apt)}><Edit size={16} /></Button>
+                    </div>
                   </div>
                 </Card>
               ))
@@ -558,10 +728,20 @@ const AgendaPage: React.FC = () => {
         maxWidth="max-w-xl"
       >
         <form onSubmit={handleSaveAppointment} className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input name="clientName" label="Nome do Cliente" defaultValue={editingAppointment?.client_name} required placeholder="Ex: João Silva" />
-            <Input name="clientPhone" label="WhatsApp" defaultValue={editingAppointment?.client_phone} required placeholder="(00) 00000-0000" icon={<Phone size={14} />} />
-          </div>
+          <ClientSelect
+            tenantId={profile?.tenant_id || ''}
+            selectedClientId={selectedClientId}
+            onChange={(client) => {
+              setSelectedClientId(client.id);
+              setClientName(client.name);
+              setClientPhone(client.phone);
+            }}
+            onNewClient={() => setIsClientModalOpen(true)}
+          />
+
+          {/* Hidden inputs to maintain FormData compatibility if needed, though we use state now */}
+          <input type="hidden" name="clientName" value={clientName} />
+          <input type="hidden" name="clientPhone" value={clientPhone} />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -640,6 +820,23 @@ const AgendaPage: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      <ClientModal 
+        isOpen={isClientModalOpen}
+        onClose={() => setIsClientModalOpen(false)}
+        onSave={handleQuickSaveClient}
+        editingClient={null}
+        loading={savingClient}
+        barbers={barbers}
+      />
+
+      <CheckoutModal 
+        isOpen={isCheckoutModalOpen}
+        onClose={() => setIsCheckoutModalOpen(false)}
+        appointment={checkoutAppointment}
+        services={services}
+        onComplete={fetchAgendaData}
+      />
     </div>
   );
 };
