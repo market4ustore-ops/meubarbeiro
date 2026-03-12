@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Search, Package, AlertCircle, TrendingDown, Loader2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, Package, AlertCircle, TrendingDown, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, Button, Input, Badge } from '../components/UI';
 import { ProductModal } from '../components/ProductModal';
 import { Product } from '../types';
@@ -21,39 +21,73 @@ const ProductsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
+   const [loading, setLoading] = useState(true);
   const [categoriesCount, setCategoriesCount] = useState(0);
+  const [expandedProducts, setExpandedProducts] = useState<string[]>([]);
+
+  const toggleExpand = (productId: string) => {
+    setExpandedProducts(prev => 
+      prev.includes(productId) ? prev.filter(id => id !== productId) : [...prev, productId]
+    );
+  };
 
   const fetchProducts = async () => {
     if (!profile?.tenant_id) return;
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('products')
-        .select('*, categories(name)')
-        .eq('tenant_id', profile.tenant_id)
-        .order('name');
 
-      if (error) throw error;
-
-      setProducts(data.map(p => ({
-        id: p.id,
-        name: p.name,
-        category: (p as any).categories?.name || 'Geral',
-        price: p.price,
-        stock: p.stock,
-        minStock: p.min_stock,
-        image: p.image_url || ''
-      })));
-
-      // Fetch Categories Count
-      const { count } = await supabase
+      // Fetch categories count independently — never blocked by products query
+      const categoriesResult = await supabase
         .from('categories')
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', profile.tenant_id);
+      setCategoriesCount(categoriesResult.count || 0);
 
-      setCategoriesCount(count || 0);
+      // Try fetching with product_images and variations
+      let productsResult = await supabase
+        .from('products')
+        .select(`
+          *, 
+          categories(name), 
+          product_images(url, position),
+          product_variation_types(
+            id, 
+            name, 
+            product_variation_options(id, name, stock, min_stock, price_modifier)
+          )
+        `)
+        .eq('tenant_id', profile.tenant_id)
+        .order('name');
+
+      if (productsResult.error) {
+        // Fallback: fetch without product_images/variations (migration not yet applied)
+        productsResult = await supabase
+          .from('products')
+          .select('*, categories(name)')
+          .eq('tenant_id', profile.tenant_id)
+          .order('name') as any;
+      }
+
+      if (productsResult.error) throw productsResult.error;
+
+      setProducts((productsResult.data || []).map((p: any) => {
+        const sortedImages = (p.product_images || []).sort((a: any, b: any) => a.position - b.position);
+        const coverImage = sortedImages[0]?.url || p.image_url || '';
+        return {
+          id: p.id,
+          name: p.name,
+          category: p.categories?.name || 'Geral',
+          category_id: p.category_id,
+          price: p.price,
+          stock: p.stock,
+          minStock: p.min_stock,
+          image: coverImage,
+          featured: p.featured || false,
+          has_variations: p.has_variations || false,
+          variations: p.product_variation_types || []
+        };
+      }));
 
     } catch (err: any) {
       console.error('Error fetching products:', err);
@@ -62,6 +96,9 @@ const ProductsPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+
+
 
   useEffect(() => {
     fetchProducts();
@@ -211,59 +248,98 @@ const ProductsPage: React.FC = () => {
                   <tbody className="divide-y divide-slate-800">
                     {filteredProducts.length > 0 ? (
                       filteredProducts.map((product) => (
-                        <tr key={product.id} className="hover:bg-slate-800/30 transition-colors group">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <img
-                                src={product.image || 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=200'}
-                                className="w-10 h-10 rounded-lg object-cover border border-slate-700"
-                                alt={product.name}
-                              />
-                              <span className="font-semibold text-slate-200">{product.name}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <Badge variant="info">{product.category}</Badge>
-                          </td>
-                          <td className="px-6 py-4 font-medium text-slate-300">
-                            R$ {product.price.toFixed(2)}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
-                              <div className="w-24 h-2 bg-slate-800 rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full transition-all duration-500 ${product.stock <= product.minStock ? 'bg-red-500' : 'bg-emerald-500'}`}
-                                  style={{ width: `${Math.min((product.stock / (product.minStock * 2)) * 100, 100)}%` }}
-                                ></div>
+                        <React.Fragment key={product.id}>
+                          <tr className="hover:bg-slate-800/30 transition-colors group">
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <button 
+                                  onClick={() => product.has_variations && toggleExpand(product.id)}
+                                  className={`p-1 rounded hover:bg-slate-700 transition-colors ${!product.has_variations ? 'opacity-0 cursor-default' : 'text-slate-400'}`}
+                                >
+                                  {expandedProducts.includes(product.id) ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                </button>
+                                <img
+                                  src={product.image || 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=200'}
+                                  className="w-10 h-10 rounded-lg object-cover border border-slate-700"
+                                  alt={product.name}
+                                />
+                                <span className="font-semibold text-slate-200">{product.name}</span>
                               </div>
-                              <span className={`text-sm font-bold min-w-[60px] ${product.stock <= product.minStock ? 'text-red-500' : 'text-slate-400'}`}>
-                                {product.stock} unid.
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex justify-end gap-2 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => handleEditProduct(product)}
-                                className="p-2"
-                                title="Editar"
-                              >
-                                <Edit2 size={16} />
-                              </Button>
-                              <Button
-                                variant="danger"
-                                size="sm"
-                                onClick={() => handleDeleteProduct(product.id)}
-                                className="p-2"
-                                title="Excluir"
-                              >
-                                <Trash2 size={16} />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
+                            </td>
+                            <td className="px-6 py-4">
+                              <Badge variant="info">{product.category}</Badge>
+                            </td>
+                            <td className="px-6 py-4 font-medium text-slate-300">
+                              R$ {product.price.toFixed(2)}
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-24 h-2 bg-slate-800 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all duration-500 ${product.stock <= product.minStock ? 'bg-red-500' : 'bg-emerald-500'}`}
+                                    style={{ width: `${Math.min((product.stock / (product.minStock * 2)) * 100, 100)}%` }}
+                                  ></div>
+                                </div>
+                                <span className={`text-sm font-bold min-w-[60px] ${product.stock <= product.minStock ? 'text-red-500' : 'text-slate-400'}`}>
+                                  {product.stock} unid.
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex justify-end gap-2 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => handleEditProduct(product)}
+                                  className="p-2"
+                                  title="Editar"
+                                >
+                                  <Edit2 size={16} />
+                                </Button>
+                                <Button
+                                  variant="danger"
+                                  size="sm"
+                                  onClick={() => handleDeleteProduct(product.id)}
+                                  className="p-2"
+                                  title="Excluir"
+                                >
+                                  <Trash2 size={16} />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                          {/* Expanded Variations View */}
+                          {product.has_variations && expandedProducts.includes(product.id) && (
+                            <tr className="bg-slate-900/40 border-l-2 border-emerald-500">
+                              <td colSpan={5} className="px-16 py-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  {(product as any).variations?.map((v: any) => (
+                                    <div key={v.id} className="space-y-2">
+                                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{v.name}</p>
+                                      <div className="space-y-1">
+                                        {v.product_variation_options?.map((opt: any) => (
+                                          <div key={opt.id} className="flex items-center justify-between text-xs bg-slate-800/50 p-2 rounded-lg border border-slate-700/50">
+                                            <span className="text-slate-200 font-medium">{opt.name}</span>
+                                            <div className="flex gap-3">
+                                              <span className={`text-xs ${opt.stock <= (opt.min_stock || 0) ? 'text-red-500 font-bold' : 'text-slate-400'}`}>
+                                                {opt.stock} unid.
+                                              </span>
+                                              {opt.price_modifier !== 0 && (
+                                                <span className={opt.price_modifier > 0 ? 'text-emerald-500' : 'text-red-500'}>
+                                                  {opt.price_modifier > 0 ? '+' : ''} R$ {opt.price_modifier.toFixed(2)}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       ))
                     ) : (
                       <tr>
