@@ -13,17 +13,21 @@ import {
   Store,
   BarChart3,
   Globe,
-  ShoppingBag
+  ShoppingBag,
+  DollarSign,
+  Zap
 } from 'lucide-react';
 import { Service, Product, Barber, Appointment, AppointmentStatus, Category, ShopSettings } from './types';
 
 export const NAV_ITEMS = [
   { name: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" />, path: '/admin/dashboard' },
+  { name: 'Atendimento', icon: <Zap className="w-5 h-5" />, path: '/admin/atendimento' },
   { name: 'Agenda', icon: <Calendar className="w-5 h-5" />, path: '/admin/agenda' },
+  { name: 'Clientes', icon: <Users className="w-5 h-5" />, path: '/admin/clientes' },
   { name: 'Equipe', icon: <Users className="w-5 h-5" />, path: '/admin/equipe' },
+  { name: 'Financeiro', icon: <DollarSign className="w-5 h-5" />, path: '/admin/financeiro' },
   { name: 'Serviços', icon: <Scissors className="w-5 h-5" />, path: '/admin/servicos' },
   { name: 'Produtos', icon: <Package className="w-5 h-5" />, path: '/admin/produtos' },
-  { name: 'Pedidos', icon: <ShoppingBag className="w-5 h-5" />, path: '/admin/pedidos' },
   { name: 'Categorias', icon: <Tags className="w-5 h-5" />, path: '/admin/categorias' },
   { name: 'Assinatura', icon: <CreditCard className="w-5 h-5" />, path: '/admin/assinatura' },
   { name: 'Configurações', icon: <Settings className="w-5 h-5" />, path: '/admin/configuracoes' },
@@ -87,9 +91,9 @@ export const MOCK_BARBERS: Barber[] = [
 ];
 
 export const MOCK_PRODUCTS: Product[] = [
-  { id: 'p1', name: 'Pomada Matte Extra Forte', category: 'Pomada', price: 45, stock: 5, minStock: 10, featured: true, image: 'https://picsum.photos/seed/p1/200' },
-  { id: 'p2', name: 'Óleo de Barba Cedro', category: 'Acessórios', price: 35, stock: 15, minStock: 5, featured: false, image: 'https://picsum.photos/seed/p2/200' },
-  { id: 'p3', name: 'Shampoo Mentolado', category: 'Shampoo', price: 55, stock: 2, minStock: 8, featured: true, image: 'https://picsum.photos/seed/p3/200' },
+  { id: 'p1', name: 'Pomada Matte Extra Forte', category: 'Pomada', price: 45, stock: 5, minStock: 10, featured: true, image: 'https://picsum.photos/seed/p1/200', has_variations: false },
+  { id: 'p2', name: 'Óleo de Barba Cedro', category: 'Acessórios', price: 35, stock: 15, minStock: 5, featured: false, image: 'https://picsum.photos/seed/p2/200', has_variations: false },
+  { id: 'p3', name: 'Shampoo Mentolado', category: 'Shampoo', price: 55, stock: 2, minStock: 8, featured: true, image: 'https://picsum.photos/seed/p3/200', has_variations: false },
 ];
 
 export const MOCK_APPOINTMENTS: Appointment[] = [

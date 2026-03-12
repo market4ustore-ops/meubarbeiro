@@ -43,7 +43,8 @@ const BarbersPage: React.FC = () => {
         status: u.status as 'ONLINE' | 'OFFLINE',
         avatar: u.avatar || undefined,
         username: u.email || '',
-        password: ''
+        password: '',
+        commission_rate: u.commission_rate || 0
       }));
       setBarbers(mappedBarbers);
     }
@@ -118,6 +119,7 @@ const BarbersPage: React.FC = () => {
             name: barber.name,
             role: barber.role,
             status: barber.status,
+            commission_rate: barber.commission_rate || 0
           })
           .eq('id', barber.id);
 
@@ -151,6 +153,11 @@ const BarbersPage: React.FC = () => {
           addToast('Convite processado! Se precisar, copie o link manual abaixo.', 'success');
         } else {
           addToast('Convite enviado com sucesso!', 'success');
+        }
+
+        // Update commission_rate for the new user if it was set
+        if (data.userId && barber.commission_rate) {
+          await supabase.from('users').update({ commission_rate: barber.commission_rate }).eq('id', data.userId);
         }
 
         fetchBarbers();

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 // Trigger rebuild for Vercel
-import { User, Shield, Activity, AtSign, Key, CheckCircle2, XCircle } from 'lucide-react';
+import { User, Shield, Activity, AtSign, Key, CheckCircle2, XCircle, TrendingUp } from 'lucide-react';
 import { Modal, Input, Button } from './UI';
 import { Barber } from '../types';
 
@@ -34,6 +34,7 @@ export const BarberModal: React.FC<BarberModalProps> = ({
     password: '',
     role: 'BARBER',
     status: 'OFFLINE',
+    commission_rate: 0,
   });
 
   // Estado para validações de senha
@@ -59,6 +60,7 @@ export const BarberModal: React.FC<BarberModalProps> = ({
         password: '',
         role: 'BARBER',
         status: 'OFFLINE',
+        commission_rate: 0,
       });
     }
   }, [editingBarber, isOpen]);
@@ -167,6 +169,20 @@ export const BarberModal: React.FC<BarberModalProps> = ({
               <option value="ONLINE">Online</option>
             </select>
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Input
+            label="Comissão (%)"
+            type="number"
+            placeholder="0"
+            icon={<TrendingUp size={18} />}
+            value={formData.commission_rate?.toString()}
+            onChange={e => setFormData({ ...formData, commission_rate: Number(e.target.value) })}
+            min="0"
+            max="100"
+            required
+          />
         </div>
 
         <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
