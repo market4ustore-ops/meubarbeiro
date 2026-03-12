@@ -66,7 +66,12 @@ const PublicShopPage: React.FC = () => {
   // Estados do Catálogo de Produtos
   const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
   const [catalogStep, setCatalogStep] = useState(1);
-  const [cart, setCart] = useState<{ product: Product; quantity: number }[]>([]);
+  const [cart, setCart] = useState<{ product: Product; quantity: number; selectedVariations?: Record<string, string>; finalPrice?: number }[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedGalleryIdx, setSelectedGalleryIdx] = useState(0);
+  const [productGallery, setProductGallery] = useState<string[]>([]);
+  const [productVariations, setProductVariations] = useState<any[]>([]);
+  const [selectedVariationOptions, setSelectedVariationOptions] = useState<Record<string, string>>({});
 
   // Comum
   const [loading, setLoading] = useState(false);
@@ -244,19 +249,54 @@ const PublicShopPage: React.FC = () => {
   const primaryColor = tenant?.primary_color || '#10b981';
 
   // Funções de Carrinho/Catálogo
-  const addToCart = (product: Product) => {
+  const openProductDetail = async (product: Product) => {
+    setSelectedProduct(product);
+    setSelectedGalleryIdx(0);
+    setSelectedVariationOptions({});
+
+    // Fetch images for this product
+    const db = supabase as any;
+    const { data: imgs } = await db.from('product_images').select('url, position').eq('product_id', product.id).order('position');
+    const imageUrls: string[] = imgs && imgs.length > 0
+      ? imgs.map((i: any) => i.url)
+      : [(product as any).image_url || (product as any).image || ''];
+    setProductGallery(imageUrls.filter(Boolean));
+
+    // Fetch variations
+    const { data: vtypes } = await db.from('product_variation_types').select('*, product_variation_options(*)').eq('product_id', product.id);
+    setProductVariations(vtypes || []);
+  };
+
+  const getVariationPriceModifier = () => {
+    let total = 0;
+    for (const vtype of productVariations) {
+      const selectedOptId = selectedVariationOptions[vtype.id];
+      if (selectedOptId) {
+        const opt = (vtype.product_variation_options || []).find((o: any) => o.id === selectedOptId);
+        if (opt) total += opt.price_modifier || 0;
+      }
+    }
+    return total;
+  };
+
+  const handleAddToCartFromDetail = () => {
+    if (!selectedProduct) return;
+    const modifier = getVariationPriceModifier();
+    const finalPrice = selectedProduct.price + modifier;
+    const productWithPrice = { ...selectedProduct, price: finalPrice };
     setCart(prev => {
-      const existing = prev.find(item => item.product.id === product.id);
+      const existing = prev.find(item => item.product.id === selectedProduct.id);
       if (existing) {
         return prev.map(item =>
-          item.product.id === product.id
+          item.product.id === selectedProduct.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       }
-      return [...prev, { product, quantity: 1 }];
+      return [...prev, { product: productWithPrice as any, quantity: 1, selectedVariations: selectedVariationOptions }];
     });
-    addToast(`${product.name} adicionado ao carrinho`, 'success');
+    addToast(`${selectedProduct.name} adicionado ao carrinho`, 'success');
+    setSelectedProduct(null);
   };
 
   const updateQuantity = (id: string, delta: number) => {
@@ -268,6 +308,7 @@ const PublicShopPage: React.FC = () => {
       return item;
     }).filter(item => item.quantity > 0));
   };
+
 
   const cartTotal = useMemo(() => {
     return cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
@@ -1010,10 +1051,85 @@ const PublicShopPage: React.FC = () => {
             </div>
           )}
 
-          {/* Step 1: Vitrine */}
-          {catalogStep === 1 && (
-            <div className="space-y-6 animate-in fade-in">
-              {/* Category Filter */}
+          {selectedProduct ? (
+            /* ── Product detail view ── */
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2">
+                <button onClick={() => setSelectedProduct(null)} className="p-1 hover:bg-slate-800 rounded-lg" style={{ color: primaryColor }}>
+                  <ChevronLeft size={20} />
+                </button>
+                <h4 className="text-base font-bold text-white line-clamp-1">{selectedProduct.name}</h4>
+              </div>
+
+              {/* Main image */}
+              {productGallery.length > 0 && (
+                <div className="rounded-2xl overflow-hidden aspect-square bg-slate-900 relative">
+                  <img src={productGallery[selectedGalleryIdx]} className="w-full h-full object-cover" alt={selectedProduct.name} />
+                  {productGallery.length > 1 && (
+                    <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5">
+                      {productGallery.map((_, idx) => (
+                        <button key={idx} onClick={() => setSelectedGalleryIdx(idx)}
+                          className={`w-2 h-2 rounded-full transition-all ${idx === selectedGalleryIdx ? 'scale-125' : 'bg-white/30 hover:bg-white/60'}`}
+                          style={idx === selectedGalleryIdx ? { backgroundColor: primaryColor } : {}}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Thumbnail strip */}
+              {productGallery.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                  {productGallery.map((url, idx) => (
+                    <button key={idx} onClick={() => setSelectedGalleryIdx(idx)}
+                      className={`w-14 h-14 shrink-0 rounded-xl overflow-hidden border-2 transition-all ${idx === selectedGalleryIdx ? '' : 'border-slate-800 opacity-50 hover:opacity-80'}`}
+                      style={idx === selectedGalleryIdx ? { borderColor: primaryColor } : {}}
+                    >
+                      <img src={url} className="w-full h-full object-cover" alt="" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Price */}
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-black" style={{ color: primaryColor }}>
+                  R$ {(selectedProduct.price + getVariationPriceModifier()).toFixed(2)}
+                </span>
+                {getVariationPriceModifier() !== 0 && (
+                  <span className="text-xs text-slate-500 line-through">R$ {selectedProduct.price.toFixed(2)}</span>
+                )}
+              </div>
+
+              {/* Variation selectors */}
+              {productVariations.map((vtype: any) => (
+                <div key={vtype.id} className="space-y-2">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{vtype.name}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(vtype.product_variation_options || []).map((opt: any) => {
+                      const isSelected = selectedVariationOptions[vtype.id] === opt.id;
+                      return (
+                        <button key={opt.id}
+                          onClick={() => setSelectedVariationOptions(prev => ({ ...prev, [vtype.id]: isSelected ? '' : opt.id }))}
+                          className={`px-3 py-1.5 rounded-lg border text-sm font-bold transition-all ${isSelected ? 'text-white' : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500'}`}
+                          style={isSelected ? { backgroundColor: primaryColor, borderColor: primaryColor, color: '#fff' } : {}}
+                        >
+                          {opt.name}{opt.price_modifier > 0 ? ` +R$${opt.price_modifier.toFixed(2)}` : opt.price_modifier < 0 ? ` -R$${Math.abs(opt.price_modifier).toFixed(2)}` : ''}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              <Button onClick={handleAddToCartFromDetail} className="w-full h-12 gap-2 text-white" style={{ backgroundColor: primaryColor }}>
+                <Plus size={16} /> Adicionar ao Carrinho
+              </Button>
+            </div>
+          ) : (
+            /* ── Product grid ── */
+            <div className="space-y-4">
               <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
                 <button
                   onClick={() => setSelectedProductCategory(null)}
@@ -1036,11 +1152,11 @@ const PublicShopPage: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4 max-h-[500px] overflow-y-auto no-scrollbar pr-2 pb-4">
                 {filteredProducts.map(product => (
-                  <Card key={product.id} className="bg-slate-900 border-slate-800 overflow-hidden flex flex-col group">
+                  <Card key={product.id} className="bg-slate-900 border-slate-800 overflow-hidden flex flex-col group cursor-pointer" onClick={() => openProductDetail(product)}>
                     <div className="aspect-square relative overflow-hidden">
-                      <img src={product.image_url || 'https://via.placeholder.com/300'} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt={product.name} />
+                      <img src={(product as any).image_url || (product as any).image || 'https://via.placeholder.com/300'} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt={product.name} />
                       <div className="absolute top-2 left-2">
-                        <Badge variant="secondary" className="bg-black/50 backdrop-blur-md border-white/10">{product.categories?.name || 'Geral'}</Badge>
+                        <Badge variant="secondary" className="bg-black/50 backdrop-blur-md border-white/10">{(product as any).categories?.name || 'Geral'}</Badge>
                       </div>
                     </div>
                     <div className="p-3 flex-1 flex flex-col justify-between gap-3">
@@ -1048,8 +1164,8 @@ const PublicShopPage: React.FC = () => {
                         <h4 className="font-bold text-sm text-white line-clamp-1 uppercase tracking-tight">{product.name}</h4>
                         <p className="text-lg font-black mt-1" style={{ color: primaryColor }}>R$ {product.price.toFixed(2)}</p>
                       </div>
-                      <Button onClick={() => addToCart(product)} className="w-full h-9 text-xs gap-2" style={{ backgroundColor: primaryColor }}>
-                        <Plus size={14} /> Adicionar
+                      <Button onClick={(e) => { e.stopPropagation(); openProductDetail(product); }} className="w-full h-9 text-xs gap-2" style={{ backgroundColor: primaryColor }}>
+                        <Plus size={14} /> Ver Produto
                       </Button>
                     </div>
                   </Card>
@@ -1057,6 +1173,7 @@ const PublicShopPage: React.FC = () => {
               </div>
             </div>
           )}
+
 
           {/* Step 2: Carrinho Detalhado */}
           {catalogStep === 2 && (

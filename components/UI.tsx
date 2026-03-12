@@ -116,3 +116,22 @@ export const Modal: React.FC<ModalProps> = ({
     </div>
   );
 };
+
+export const EmptyState: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+  className?: string;
+}> = ({ icon, title, description, action, className }) => (
+  <Card className={`p-12 flex flex-col items-center justify-center text-center space-y-4 bg-slate-900/20 border-slate-800/50 border-dashed ${className}`}>
+    <div className="p-4 bg-slate-800/50 rounded-full text-slate-500">
+      {icon}
+    </div>
+    <div>
+      <h3 className="text-lg font-bold text-slate-200">{title}</h3>
+      <p className="text-slate-500 text-sm max-w-xs mx-auto">{description}</p>
+    </div>
+    {action && <div className="pt-2">{action}</div>}
+  </Card>
+);
