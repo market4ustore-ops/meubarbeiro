@@ -138,6 +138,89 @@ export interface Database {
                     },
                 ]
             }
+            financial_transactions: {
+                Row: {
+                    amount: number
+                    appointment_id: string | null
+                    barber_id: string | null
+                    category: string
+                    client_id: string | null
+                    commission_amount: number | null
+                    created_at: string | null
+                    date: string
+                    description: string | null
+                    id: string
+                    status: string
+                    tenant_id: string
+                    type: string
+                    updated_at: string | null
+                    payment_method: string | null
+                    items: any[] | null
+                    discount_amount: number | null
+                }
+                Insert: {
+                    amount: number
+                    appointment_id?: string | null
+                    barber_id?: string | null
+                    category: string
+                    client_id?: string | null
+                    commission_amount?: number | null
+                    created_at?: string | null
+                    date?: string
+                    description?: string | null
+                    id?: string
+                    status?: string
+                    tenant_id: string
+                    type: string
+                    updated_at?: string | null
+                }
+                Update: {
+                    amount?: number
+                    appointment_id?: string | null
+                    barber_id?: string | null
+                    category?: string
+                    client_id?: string | null
+                    commission_amount?: number | null
+                    created_at?: string | null
+                    date?: string
+                    description?: string | null
+                    id?: string
+                    status?: string
+                    tenant_id?: string
+                    type?: string
+                    updated_at?: string | null
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "financial_transactions_appointment_id_fkey"
+                        columns: ["appointment_id"]
+                        isOneToOne: false
+                        referencedRelation: "appointments"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "financial_transactions_barber_id_fkey"
+                        columns: ["barber_id"]
+                        isOneToOne: false
+                        referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "financial_transactions_client_id_fkey"
+                        columns: ["client_id"]
+                        isOneToOne: false
+                        referencedRelation: "clients"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "financial_transactions_tenant_id_fkey"
+                        columns: ["tenant_id"]
+                        isOneToOne: false
+                        referencedRelation: "tenants"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
             barber_services: {
                 Row: {
                     created_at: string
@@ -697,6 +780,7 @@ export interface Database {
                     status: Database["public"]["Enums"]["barber_status"] | null
                     tenant_id: string | null
                     updated_at: string | null
+                    commission_rate: number | null
                 }
                 Insert: {
                     avatar?: string | null
@@ -721,6 +805,7 @@ export interface Database {
                     status?: Database["public"]["Enums"]["barber_status"] | null
                     tenant_id?: string | null
                     updated_at?: string | null
+                    commission_rate?: number | null
                 }
                 Relationships: [
                     {

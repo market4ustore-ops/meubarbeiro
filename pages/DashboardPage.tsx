@@ -18,6 +18,8 @@ import { getDashboardStats } from '../lib/supabase';
 import { useToast } from '../context/ToastContext';
 import { FeatureGate } from '../components/FeatureGate';
 import { useSubscription } from '../context/SubscriptionContext';
+import { VendaExpressaButton } from '../components/VendaExpressaButton';
+import { supabase } from '../lib/supabase';
 
 
 const DashboardPage: React.FC = () => {
@@ -27,6 +29,7 @@ const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [services, setServices] = useState<any[]>([]);
 
   useEffect(() => {
     if (user?.tenant_id) {
@@ -40,6 +43,12 @@ const DashboardPage: React.FC = () => {
       // Passar user.id e user.role para filtragem
       const data = await getDashboardStats(user!.tenant_id, user!.id, user!.role);
       setStats(data);
+      
+      const { data: svcs } = await supabase
+        .from('services')
+        .select('*')
+        .eq('tenant_id', user!.tenant_id);
+      setServices(svcs || []);
     } catch (err: any) {
       addToast('Erro ao carregar estatísticas do dashboard.', 'error');
     } finally {
@@ -61,9 +70,14 @@ const DashboardPage: React.FC = () => {
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Olá, {user?.name.split(' ')[0]}! 👋</h1>
-          <p className="text-slate-400">Aqui está um resumo da sua barbearia hoje.</p>
+          <p className="text-slate-400">
+            {user?.role === 'BARBER' 
+              ? 'Aqui está o resumo do seu desempenho hoje.' 
+              : 'Aqui está um resumo da sua barbearia hoje.'}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <VendaExpressaButton services={services} onComplete={loadStats} className="flex-1 sm:flex-none bg-emerald-500 hover:bg-emerald-600 text-white" />
           <Button variant="secondary" onClick={() => navigate('/admin/agenda')} className="flex-1 sm:flex-none"><Clock size={18} /> Ver Agenda</Button>
           <Button onClick={() => navigate('/admin/agenda')} className="flex-1 sm:flex-none"><Plus size={18} /> Novo Agendamento</Button>
         </div>
@@ -78,9 +92,13 @@ const DashboardPage: React.FC = () => {
             </div>
             <Badge variant="success">Mensal</Badge>
           </div>
-          <h3 className="text-slate-400 text-sm font-medium">Faturamento Serviços</h3>
+          <h3 className="text-slate-400 text-sm font-medium">
+            {user?.role === 'BARBER' ? 'Seus Ganhos (Serviços)' : 'Faturamento Serviços'}
+          </h3>
           <p className="text-2xl font-bold text-white mt-1">R$ {stats.serviceRevenue.toFixed(2)}</p>
-          <p className="text-[10px] text-slate-500 mt-2 font-bold uppercase tracking-wider">Total de agendamentos</p>
+          <p className="text-[10px] text-slate-500 mt-2 font-bold uppercase tracking-wider">
+            {user?.role === 'BARBER' ? 'Total em atendimentos' : 'Total de agendamentos'}
+          </p>
         </Card>
 
         <Card className="p-6 border-l-4 border-l-sky-500">
@@ -102,11 +120,13 @@ const DashboardPage: React.FC = () => {
             </div>
             <Badge variant="success" className="bg-emerald-500 text-white">Total Geral</Badge>
           </div>
-          <h3 className="text-slate-300 text-sm font-medium">Faturamento Total</h3>
+          <h3 className="text-slate-300 text-sm font-medium">
+            {user?.role === 'BARBER' ? 'Geral Acumulado' : 'Faturamento Total'}
+          </h3>
           <p className="text-3xl font-bold text-white mt-1">R$ {stats.totalRevenue.toFixed(2)}</p>
           <div className="mt-2 flex items-center gap-2 text-[10px] font-bold text-emerald-500 uppercase tracking-wider">
             <TrendingUp size={12} />
-            Previsto p/ o mês
+            {user?.role === 'BARBER' ? 'Minha produtividade' : 'Previsto p/ o mês'}
           </div>
         </Card>
 
@@ -173,23 +193,30 @@ const DashboardPage: React.FC = () => {
                   <option>Últimos 7 dias</option>
                 </select>
               </div>
-              <div className="flex-1 min-h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={stats.chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                    <Tooltip
-                      cursor={{ fill: '#1e293b' }}
-                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', color: '#f8fafc' }}
-                    />
-                    <Bar dataKey="total" radius={[4, 4, 0, 0]}>
-                      {stats.chartData.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={entry.total > 0 ? '#10b981' : '#1e293b'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="flex-1 min-h-[300px] flex items-center justify-center">
+                {stats.chartData.some((d: any) => d.total > 0) ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={stats.chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                      <Tooltip
+                        cursor={{ fill: '#1e293b' }}
+                        contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', color: '#f8fafc' }}
+                      />
+                      <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                        {stats.chartData.map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={entry.total > 0 ? '#10b981' : '#1e293b'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="text-center py-10">
+                    <BarChart3 size={40} className="mx-auto text-slate-700 mb-3 opacity-20" />
+                    <p className="text-slate-500 text-xs font-medium">Nenhum dado financeiro nos últimos 7 dias.</p>
+                  </div>
+                )}
               </div>
             </Card>
           </FeatureGate>

@@ -60,6 +60,38 @@ export async function getOpeningHoursByTenant(tenantId: string) {
     return data
 }
 
+// Helper para garantir que um cliente existe no tenant (busca por telefone ou cria)
+export async function ensureClient(tenantId: string, name: string, phone: string) {
+    // 1. Tenta buscar cliente existente pelo telefone no tenant
+    const { data: existingClient, error: searchError } = await supabase
+        .from('clients' as any)
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('phone', phone)
+        .maybeSingle();
+
+    if (existingClient) return (existingClient as any).id;
+
+    // 2. Se não existir, cria um novo
+    const { data: newClient, error: createError } = await supabase
+        .from('clients' as any)
+        .insert({
+            tenant_id: tenantId,
+            name,
+            phone,
+            notes: 'Cadastrado automaticamente via agendamento online.'
+        })
+        .select('id')
+        .single();
+
+    if (createError) {
+        console.error('Error ensuring client:', createError);
+        return null;
+    }
+
+    return (newClient as any).id;
+}
+
 // Helper para criar um agendamento (público)
 export async function createAppointment(appointment: {
     tenant_id: string
@@ -73,6 +105,9 @@ export async function createAppointment(appointment: {
     time: string
     notes?: string
 }) {
+    // Garantir vínculo com o CRM de Clientes
+    const clientId = await ensureClient(appointment.tenant_id, appointment.client_name, appointment.client_phone);
+
     const { data, error } = await supabase
         .from('appointments')
         .insert({
@@ -81,6 +116,7 @@ export async function createAppointment(appointment: {
             service_ids: appointment.service_ids || [appointment.service_id],
             total_duration: appointment.total_duration || 30,
             barber_id: appointment.barber_id || null,
+            client_id: clientId, // Novo campo
             client_name: appointment.client_name,
             client_phone: appointment.client_phone,
             date: appointment.date,
@@ -119,13 +155,17 @@ export async function createProductOrder(order: {
         unit_price: number
     }>
 }) {
+    // Garantir vínculo com o CRM de Clientes
+    const clientId = await ensureClient(order.tenant_id, order.client_name, order.client_phone);
+
     const { data, error } = await supabase.rpc('create_product_order', {
         p_tenant_id: order.tenant_id,
         p_client_name: order.client_name,
         p_client_phone: order.client_phone,
         p_total: order.total,
-        p_items: order.items
-    });
+        p_items: order.items,
+        p_client_id: clientId // Novo parâmetro
+    } as any);
 
     if (error) throw error
     return data
@@ -189,32 +229,18 @@ export async function getDashboardStats(tenantId: string, userId?: string, userR
     servicesTodayQuery = applyBarberFilter(servicesTodayQuery);
     const { count: servicesToday, error: err1 } = await servicesTodayQuery;
 
-    // Faturamento do mês atual (serviços e produtos concluídos)
-    let monthlyRevenueQuery = supabase
-        .from('appointments')
-        .select('services(price)')
+    // Revenue calculation from financial_transactions (the source of truth)
+    const { data: financialDataRaw } = await supabase
+        .from('financial_transactions' as any)
+        .select('amount, type, date, description')
         .eq('tenant_id', tenantId)
-        .eq('status', 'COMPLETED')
         .gte('date', startOfMonth);
 
-    monthlyRevenueQuery = applyBarberFilter(monthlyRevenueQuery);
-    const { data: monthlyRevenueData, error: err2 } = await monthlyRevenueQuery;
+    const financialData = (financialDataRaw || []) as any[];
 
-    // Produtos - Barbeiros veem vendas de produtos? 
-    // Geralmente venda de produto é da loja, mas pode ter comissão. 
-    // Por enquanto, vou assumir que barbeiro vê total da loja ou não vê nada?
-    // O pedido foi "alertas apenas ... de seus proprios agendamentos".
-    // Vou manter produtos como tenant-wide por enquanto, exceto se o usuário reclamar.
-    const { data: monthlyProductData, error: errProd } = await supabase
-        .from('product_orders')
-        .select('total')
-        .eq('tenant_id', tenantId)
-        .eq('status', 'COMPLETED')
-        .gte('created_at', `${startOfMonth}T00:00:00Z`)
-
-    const serviceRevenue = monthlyRevenueData?.reduce((acc: number, curr: any) => acc + (curr.services?.price || 0), 0) || 0
-    const productRevenue = monthlyProductData?.reduce((acc: number, curr: any) => acc + (curr.total || 0), 0) || 0
-    const totalRevenue = serviceRevenue + productRevenue
+    const totalRevenue = financialData.reduce((acc: number, curr: any) => acc + (curr.type === 'REVENUE' || curr.type === 'INCOME' ? curr.amount : 0), 0);
+    const serviceRevenue = financialData.reduce((acc: number, curr: any) => acc + ((curr.type === 'REVENUE' || curr.type === 'INCOME') && !curr.description?.includes('Pedido Online') ? curr.amount : 0), 0);
+    const productRevenue = financialData.reduce((acc: number, curr: any) => acc + ((curr.type === 'REVENUE' || curr.type === 'INCOME') && curr.description?.includes('Pedido Online') ? curr.amount : 0), 0);
 
     // Próximos agendamentos (hoje)
     const currentTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
@@ -241,17 +267,15 @@ export async function getDashboardStats(tenantId: string, userId?: string, userR
 
     weeklyServicesQuery = applyBarberFilter(weeklyServicesQuery);
 
-    const [weeklyServices, weeklyProducts] = await Promise.all([
-        weeklyServicesQuery,
-        supabase
-            .from('product_orders')
-            .select('created_at, total')
-            .eq('tenant_id', tenantId)
-            .eq('status', 'COMPLETED')
-            .gte('created_at', `${sevenDaysAgoStr}T00:00:00Z`)
-    ])
+    // Weekly chart data from financial_transactions
+    const { data: weeklyFinancialsRaw } = await supabase
+        .from('financial_transactions' as any)
+        .select('date, amount, type')
+        .eq('tenant_id', tenantId)
+        .gte('date', sevenDaysAgoStr);
 
-    // Agrupar dados semanais por dia
+    const weeklyFinancials = (weeklyFinancialsRaw || []) as any[];
+
     const dayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
     const chartData = []
 
@@ -261,15 +285,11 @@ export async function getDashboardStats(tenantId: string, userId?: string, userR
         const dateStr = d.toISOString().split('T')[0]
         const dayName = dayLabels[d.getDay()]
 
-        const dayServiceRevenue = weeklyServices.data
-            ?.filter(apt => apt.date === dateStr)
-            ?.reduce((acc, curr: any) => acc + (curr.services?.price || 0), 0) || 0
+        const dayRevenue = weeklyFinancials
+            .filter(tx => tx.date === dateStr && (tx.type === 'REVENUE' || tx.type === 'INCOME'))
+            .reduce((acc, curr: any) => acc + curr.amount, 0);
 
-        const dayProductRevenue = weeklyProducts.data
-            ?.filter(order => order.created_at?.startsWith(dateStr))
-            ?.reduce((acc, curr: any) => acc + (curr.total || 0), 0) || 0
-
-        chartData.push({ name: dayName, total: dayServiceRevenue + dayProductRevenue })
+        chartData.push({ name: dayName, total: dayRevenue })
     }
 
     // Produtos com estoque baixo (Tenant wide)
@@ -280,17 +300,35 @@ export async function getDashboardStats(tenantId: string, userId?: string, userR
 
     const lowStock = allProducts?.filter((p: any) => p.stock <= (p.min_stock || 0)).slice(0, 5) || []
 
-    // Clientes ativos (count de agendamentos únicos por cliente)
-    // Se for barbeiro, vê apenas SEUS clientes?
-    let clientsQuery = supabase
-        .from('appointments')
-        .select('client_name')
-        .eq('tenant_id', tenantId);
+    // Clientes ativos (Total de clientes no CRM)
+    let activeClientsCount = 0;
+    if (isBarber && userId) {
+        // Para barbeiro: Clientes vinculados diretamente OU que já agendaram com ele
+        const { data: barberClients, error: errClients } = await supabase
+            .from('clients' as any)
+            .select('id', { count: 'exact', head: true })
+            .or(`id.in.(select client_id from client_barbers where barber_id.eq.${userId}),id.in.(select client_id from appointments where barber_id.eq.${userId})`);
+        
+        // Infelizmente o .or() com subqueries no Supabase JS não é tão direto.
+        // Vamos usar uma abordagem mais robusta:
+        const [linkedResult, appointedResult] = await Promise.all([
+            supabase.from('client_barbers' as any).select('client_id').eq('barber_id', userId),
+            supabase.from('appointments' as any).select('client_id').eq('barber_id', userId).not('client_id', 'is', null)
+        ]);
 
-    clientsQuery = applyBarberFilter(clientsQuery);
-    const { data: clients, error: err5 } = await clientsQuery;
-
-    const activeClientsCount = new Set(clients?.map(c => c.client_name)).size
+        const uniqueClientIds = new Set([
+            ...((linkedResult.data as any[])?.map(l => l.client_id) || []),
+            ...((appointedResult.data as any[])?.map(a => a.client_id) || [])
+        ]);
+        activeClientsCount = uniqueClientIds.size;
+    } else {
+        // Para owner: Total de clientes no tenant
+        const { count, error: errClients } = await supabase
+            .from('clients' as any)
+            .select('*', { count: 'exact', head: true })
+            .eq('tenant_id', tenantId);
+        activeClientsCount = count || 0;
+    }
 
     // Novos pedidos (Pendentes) - Notificações (Tenant wide)
     const { data: pendingOrders, error: errOrders } = await supabase
@@ -327,4 +365,150 @@ export async function getDashboardStats(tenantId: string, userId?: string, userR
         pendingOrders: (pendingOrders || []) as any[],
         pendingAppointments: (pendingAppointments || []) as any[]
     }
+}
+
+// ============================================
+// Financial / Management Helpers
+// ============================================
+
+export async function getFinancialStats(tenantId: string, startDate?: string, endDate?: string) {
+    let query = supabase
+        .from('financial_transactions' as any)
+        .select('*')
+        .eq('tenant_id', tenantId);
+
+    if (startDate) query = query.gte('date', startDate);
+    if (endDate) query = query.lte('date', endDate);
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    const transactions = data as any[];
+    const incomes = transactions.filter(t => t.type === 'INCOME');
+    const expenses = transactions.filter(t => t.type === 'EXPENSE');
+
+    const grossRevenue = incomes.reduce((sum, t) => sum + Number(t.amount), 0);
+    const totalExpenses = expenses.reduce((sum, t) => sum + Number(t.amount), 0);
+    const totalCommissions = incomes.reduce((sum, t) => sum + Number(t.commission_amount || 0), 0);
+    
+    const netProfit = grossRevenue - totalExpenses - totalCommissions;
+    
+    // Unique clients in income
+    const uniqueClients = new Set(incomes.map(t => t.client_id).filter(Boolean));
+    const averageTicket = uniqueClients.size > 0 ? grossRevenue / uniqueClients.size : 0;
+
+    return {
+        grossRevenue,
+        totalExpenses,
+        totalCommissions,
+        netProfit,
+        averageTicket,
+        transactionCount: transactions.length
+    };
+}
+
+export async function getFinancialTransactions(tenantId: string, options?: { limit?: number, type?: string, startDate?: string, endDate?: string }) {
+    let query = supabase
+        .from('financial_transactions' as any)
+        .select(`
+            *,
+            clients(name),
+            users(name)
+        `)
+        .eq('tenant_id', tenantId)
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false });
+
+    if (options?.limit) query = query.limit(options.limit);
+    if (options?.type) query = query.eq('type', options.type);
+    if (options?.startDate) query = query.gte('date', options.startDate);
+    if (options?.endDate) query = query.lte('date', options.endDate);
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data;
+}
+
+export async function upsertFinancialTransaction(transaction: any) {
+    // Ensure all numeric types are handled
+    const payload = {
+        ...transaction,
+        amount: Number(transaction.amount),
+        commission_amount: Number(transaction.commission_amount || 0)
+    };
+
+    const { data, error } = await supabase
+        .from('financial_transactions' as any)
+        .upsert(payload)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+}
+
+export async function deleteFinancialTransaction(id: string) {
+    const { error } = await supabase
+        .from('financial_transactions' as any)
+        .delete()
+        .eq('id', id);
+
+    if (error) throw error;
+}
+
+// Helper robusto para processar uma venda (PDV ou Pedido)
+export async function processSale(data: {
+    transaction: any,
+    appointmentId?: string | null,
+    orderId?: string | null,
+    inventoryItems: Array<{ id: string, quantity: number }>
+}) {
+    // 1. Criar transação financeira
+    const { data: tx, error: txError } = await supabase
+        .from('financial_transactions' as any)
+        .insert(data.transaction)
+        .select()
+        .single();
+
+    if (txError) throw txError;
+
+    // 2. Se houver agendamento, marcar como concluído
+    if (data.appointmentId) {
+        const { error: aptError } = await supabase
+            .from('appointments')
+            .update({ status: 'COMPLETED' })
+            .eq('id', data.appointmentId);
+        
+        if (aptError) console.error("Appointment update error:", aptError);
+    }
+
+    // 3. Se houver pedido online, marcar como concluído
+    if (data.orderId) {
+        const { error: orderError } = await supabase
+            .from('product_orders')
+            .update({ status: 'COMPLETED' })
+            .eq('id', data.orderId);
+        
+        if (orderError) console.error("Order update error:", orderError);
+    }
+
+    // 4. Baixa de estoque
+    for (const item of data.inventoryItems) {
+        // Buscamos o estoque atual para garantir precisão (decremento atômico seria melhor via RPC, mas vamos manter o padrão por enquanto)
+        const { data: product } = await supabase
+            .from('products')
+            .select('stock')
+            .eq('id', item.id)
+            .single();
+
+        if (product) {
+            await supabase
+                .from('products')
+                .update({ stock: (product.stock || 0) - item.quantity })
+                .eq('id', item.id);
+        }
+    }
+
+    return tx;
 }

@@ -7,7 +7,7 @@ export enum AppointmentStatus {
 }
 
 export const AppointmentStatusLabels: Record<AppointmentStatus, string> = {
-  [AppointmentStatus.PENDING]: 'PENDENTE',
+  [AppointmentStatus.PENDING]: 'AGUARDANDO',
   [AppointmentStatus.CONFIRMED]: 'CONFIRMADO',
   [AppointmentStatus.CANCELLED]: 'CANCELADO',
   [AppointmentStatus.COMPLETED]: 'CONCLUÍDO'
@@ -28,7 +28,8 @@ export interface Barber {
   avatar?: string;
   role: 'OWNER' | 'BARBER' | 'SUPER_ADMIN';
   status: 'ONLINE' | 'OFFLINE';
-  id_db?: string; // Para referenciar o ID na tabela users, se o id principal for diferente
+  id_db?: string;
+  commission_rate?: number;
 }
 
 export interface BarberSchedule {
@@ -65,15 +66,18 @@ export interface Product {
   id: string;
   name: string;
   category: string;
+  category_id?: string;
   price: number;
   stock: number;
   minStock: number;
   featured: boolean;
   image: string;
+  has_variations: boolean;
 }
 
 export interface Appointment {
   id: string;
+  clientId?: string;
   clientName: string;
   clientPhone: string;
   serviceId: string;
@@ -232,3 +236,49 @@ export interface PlanFeatures {
   multiBranch: boolean;
 }
 
+
+export interface ClientAppointmentHistory {
+  id: string;
+  date: string;
+  time: string;
+  service_name: string;
+  barber_name: string;
+  status: string;
+}
+
+export interface Client {
+  id: string;
+  tenant_id: string;
+  name: string;
+  phone: string;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+  barbers?: { id: string; name: string }[];
+  appointments?: ClientAppointmentHistory[];
+}
+export interface CheckoutItem {
+  type: 'SERVICE' | 'PRODUCT';
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+export interface FinancialTransaction {
+  id: string;
+  tenant_id: string;
+  type: 'INCOME' | 'EXPENSE';
+  category: string;
+  amount: number;
+  description: string | null;
+  date: string;
+  status: 'PAID' | 'PENDING';
+  client_id?: string | null;
+  barber_id?: string | null;
+  appointment_id?: string | null;
+  commission_amount?: number;
+  payment_method?: 'PIX' | 'CARD' | 'CASH' | null;
+  items?: CheckoutItem[] | null;
+  discount_amount?: number | null;
+}

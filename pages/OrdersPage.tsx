@@ -18,7 +18,7 @@ import { Card, Button, Input, Badge, Modal } from '../components/UI';
 import { useToast } from '../context/ToastContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
-import { getOrdersByTenant, updateOrderStatus } from '../lib/supabase';
+import { getOrdersByTenant, updateOrderStatus, processSale } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
 
 type DBOrder = Database['public']['Tables']['product_orders']['Row'] & {
@@ -104,7 +104,35 @@ const OrdersPage: React.FC = () => {
           type: 'info'
         });
       } else if (newStatus === OrderStatus.COMPLETED) {
-        addToast('Pedido concluído com sucesso!', 'success');
+        if (order) {
+            // Unificação de Vendas: Criar transação financeira e baixar estoque
+            await processSale({
+                transaction: {
+                    tenant_id: user!.tenant_id,
+                    type: 'INCOME',
+                    category: 'Pedido Online',
+                    amount: order.total,
+                    description: `Pedido Online - Cliente: ${order.client_name}`,
+                    date: new Date().toISOString().split('T')[0],
+                    status: 'PAID',
+                    client_id: order.client_id || null,
+                    payment_method: 'CASH', // Default for pickup, can be improved later
+                    items: order.product_order_items.map(i => ({
+                        type: 'PRODUCT',
+                        id: i.product_id,
+                        name: i.product_name,
+                        price: i.unit_price,
+                        quantity: i.quantity
+                    }))
+                },
+                orderId: order.id,
+                inventoryItems: order.product_order_items.map(i => ({
+                    id: i.product_id,
+                    quantity: i.quantity
+                }))
+            });
+            addToast('Pedido e Venda concluídos!', 'success');
+        }
       } else if (newStatus === OrderStatus.CANCELLED) {
         addToast('Pedido cancelado.', 'warning');
         addNotification({
