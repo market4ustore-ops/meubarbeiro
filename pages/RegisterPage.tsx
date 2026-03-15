@@ -375,7 +375,7 @@ const RegisterPage: React.FC = () => {
 
                 <div className="space-y-4">
                   <Input
-                    label="Nome da Barbearia"
+                    label="Nome da sua barbearia"
                     placeholder="Ex: Barber Shop Vintage"
                     icon={<Store size={18} />}
                     value={formData.shopName}

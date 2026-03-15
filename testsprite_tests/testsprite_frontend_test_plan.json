@@ -1,0 +1,1670 @@
+[
+  {
+    "id": "TC001",
+    "title": "Concluir cadastro multi-etapa com sucesso e ser redirecionado para /login",
+    "description": "Verifica que um novo cadastro de barbearia completa os passos, exibe confirmação de sucesso e redireciona para a página de login.",
+    "category": "Registro de Loja",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /registro"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Passo 1\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Teste\" into the \"Nome\" field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"teste.sucesso+001@exemplo.com\" into the \"Email\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Próximo\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Nome da sua barbearia\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Barbearia Sucesso 001\" into the \"Nome da sua barbearia\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Finalizar Cadastro\""
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Após finalizar cadastro, ver confirmação e redirecionamento para /login",
+    "description": "Verifica o estado pós-submissão: mensagem de sucesso visível e URL contendo /login.",
+    "category": "Registro de Loja",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /registro"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Maria\" into the \"Nome\" field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"teste.sucesso+002@exemplo.com\" into the \"Email\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Próximo\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Barbearia Sucesso 002\" into the \"Nome da sua barbearia\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Finalizar Cadastro\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Cadastro\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/login\""
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Bloquear avanço sem preencher campo obrigatório no Passo 1",
+    "description": "Verifica que o usuário não consegue avançar para o Passo 2 quando falta um campo obrigatório do Passo 1.",
+    "category": "Registro de Loja",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /registro"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Passo 1\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"\" into the \"Nome\" field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"teste.erro+001@exemplo.com\" into the \"Email\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Próximo\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"obrigatório\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Passo 2\" is not visible"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Exibir erros de validação ao tentar finalizar com dados pessoais incompletos e depois corrigir",
+    "description": "Verifica mensagens de validação, correção dos campos e finalização bem-sucedida do cadastro.",
+    "category": "Registro de Loja",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /registro"
+      },
+      {
+        "type": "action",
+        "description": "Type \"João\" into the \"Nome\" field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"\" into the \"Email\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Finalizar Cadastro\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"obrigatório\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"teste.corrigir+001@exemplo.com\" into the \"Email\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Finalizar Cadastro\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/login\""
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Validar formato de email inválido no Passo 1",
+    "description": "Verifica que o formulário impede submissão quando o email está em formato inválido.",
+    "category": "Registro de Loja",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /registro"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Carla\" into the \"Nome\" field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"email-invalido\" into the \"Email\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Próximo\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"email\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"inválido\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Impedir finalizar cadastro no Passo 2 sem preencher \"Nome da sua barbearia\"",
+    "description": "Verifica que a validação do Passo 2 exige o nome da barbearia antes de concluir.",
+    "category": "Registro de Loja",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /registro"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Rafael\" into the \"Nome\" field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"teste.passo2+001@exemplo.com\" into the \"Email\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Próximo\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"\" into the \"Nome da sua barbearia\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Finalizar Cadastro\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"obrigatório\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Manter dados do Passo 1 ao navegar para o Passo 2",
+    "description": "Verifica que, ao ir para o Passo 2, os dados preenchidos no Passo 1 permanecem consistentes (não são perdidos).",
+    "category": "Registro de Loja",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /registro"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Ana\" into the \"Nome\" field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"teste.persistencia+001@exemplo.com\" into the \"Email\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Próximo\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Nome da sua barbearia\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Voltar\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Passo 1\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"teste.persistencia+001@exemplo.com\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Evitar múltiplos envios: clicar duas vezes em Finalizar não deve quebrar o fluxo",
+    "description": "Verifica que o fluxo não apresenta erro visível ao clicar repetidamente em Finalizar Cadastro durante o processamento.",
+    "category": "Registro de Loja",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /registro"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Bruno\" into the \"Nome\" field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"teste.duploclick+001@exemplo.com\" into the \"Email\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Próximo\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Barbearia Duplo Click 001\" into the \"Nome da sua barbearia\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Finalizar Cadastro\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Finalizar Cadastro\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/login\""
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Criar novo agendamento a partir de um horário vazio com cliente selecionado",
+    "description": "Valida que é possível criar um agendamento selecionando profissional, serviço e cliente e que ele aparece no calendário como Pendente.",
+    "category": "Agenda de Horários",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Agenda\" option in the main navigation/menu"
+      },
+      {
+        "type": "action",
+        "description": "Click an empty time slot in the calendar"
+      },
+      {
+        "type": "action",
+        "description": "Select a professional from the professional dropdown/list"
+      },
+      {
+        "type": "action",
+        "description": "Select a service from the service dropdown/list"
+      },
+      {
+        "type": "action",
+        "description": "Search for a client in the ClientSelect field and select one result"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the newly created appointment is visible in the calendar"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Pendente\" is visible for the appointment"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Acessar Agenda pelo menu após login (verifica carregamento da página)",
+    "description": "Garante que um usuário autenticado consegue acessar a página de Agenda e visualizar o calendário.",
+    "category": "Agenda de Horários",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Agenda\" option in the main navigation/menu"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/admin/agenda\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the calendar view is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Tentar salvar agendamento sem selecionar cliente (validação de formulário)",
+    "description": "Verifica que o sistema impede salvar um agendamento quando o cliente não foi selecionado e exibe uma mensagem de validação visível.",
+    "category": "Agenda de Horários",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Agenda\" option in the main navigation/menu"
+      },
+      {
+        "type": "action",
+        "description": "Click an empty time slot in the calendar"
+      },
+      {
+        "type": "action",
+        "description": "Select a professional from the professional dropdown/list"
+      },
+      {
+        "type": "action",
+        "description": "Select a service from the service dropdown/list"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an error or validation message indicating the client is required is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Atualizar agenda manualmente via Refresh para ver mudanças recentes (fallback de sincronização)",
+    "description": "Garante que ao clicar em Refresh a lista/calendário reflete os agendamentos mais recentes (sem validar atrasos de rede).",
+    "category": "Agenda de Horários",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Agenda\" option in the main navigation/menu"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Refresh\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the calendar view is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text indicating the agenda/appointments are updated or refreshed is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Abrir modal/tela de agendamento ao clicar em horário vazio (início do fluxo de criação)",
+    "description": "Valida que ao clicar em um horário vazio o sistema exibe a interface de criação de agendamento com campos essenciais visíveis.",
+    "category": "Agenda de Horários",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Agenda\" option in the main navigation/menu"
+      },
+      {
+        "type": "action",
+        "description": "Click an empty time slot in the calendar"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the scheduling form/modal is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the professional selection control is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the service selection control is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the ClientSelect (client search/select) field is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Finalizar venda no PDV a partir de um agendamento com método de pagamento e ver resumo de sucesso",
+    "description": "Verifica que um usuário autenticado consegue iniciar uma venda a partir de um agendamento, concluir o checkout e visualizar o resumo de sucesso.",
+    "category": "PDV / Checkout",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"PDV\" (ou \"POS\") no menu de administração"
+      },
+      {
+        "type": "action",
+        "description": "Click em \"Selecionar agendamento\" e selecione um agendamento existente"
+      },
+      {
+        "type": "action",
+        "description": "Click em \"Concluir Venda\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Resumo\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Finalizar venda no PDV iniciando venda manual (Iniciar Venda) e adicionando item via busca + Enter",
+    "description": "Verifica que o usuário consegue iniciar venda sem agendamento, adicionar item pelo campo de busca usando Enter e concluir a venda.",
+    "category": "PDV / Checkout",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"PDV\" (ou \"POS\") no menu de administração"
+      },
+      {
+        "type": "action",
+        "description": "Click em \"Iniciar Venda\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Corte\" into the search field for products/services"
+      },
+      {
+        "type": "action",
+        "description": "Press Enter"
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Concluir venda após selecionar método de pagamento (validação de seleção e sucesso)",
+    "description": "Verifica que ao escolher um método de pagamento o checkout permite concluir a venda e exibe confirmação de sucesso.",
+    "category": "PDV / Checkout",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"PDV\" (ou \"POS\") no menu de administração"
+      },
+      {
+        "type": "action",
+        "description": "Click em \"Iniciar Venda\""
+      },
+      {
+        "type": "action",
+        "description": "Select \"Dinheiro\" from the payment method dropdown"
+      },
+      {
+        "type": "action",
+        "description": "Click em \"Concluir Venda\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Venda concluída\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Bloquear conclusão quando não há itens no carrinho",
+    "description": "Verifica que o sistema impede concluir venda quando o carrinho está vazio e apresenta uma mensagem/estado de validação.",
+    "category": "PDV / Checkout",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"PDV\" (ou \"POS\") no menu de administração"
+      },
+      {
+        "type": "action",
+        "description": "Click em \"Iniciar Venda\""
+      },
+      {
+        "type": "action",
+        "description": "Click em \"Concluir Venda\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Adicione itens\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Erro de estoque insuficiente ao tentar concluir venda com produto sem estoque",
+    "description": "Verifica que ao tentar concluir uma venda contendo item com estoque zero/insuficiente o checkout exibe erro de falta de estoque.",
+    "category": "PDV / Checkout",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"PDV\" (ou \"POS\") no menu de administração"
+      },
+      {
+        "type": "action",
+        "description": "Click em \"Iniciar Venda\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Produto Sem Estoque\" into the search field for products/services"
+      },
+      {
+        "type": "action",
+        "description": "Press Enter"
+      },
+      {
+        "type": "action",
+        "description": "Click em \"Concluir Venda\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"sem estoque\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "Recuperar de erro de estoque removendo item e concluindo a venda com sucesso",
+    "description": "Verifica que após erro de estoque o usuário consegue remover/substituir o item e completar a venda com sucesso.",
+    "category": "PDV / Checkout",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"PDV\" (ou \"POS\") no menu de administração"
+      },
+      {
+        "type": "action",
+        "description": "Click em \"Iniciar Venda\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Produto Sem Estoque\" into the search field for products/services"
+      },
+      {
+        "type": "action",
+        "description": "Press Enter"
+      },
+      {
+        "type": "action",
+        "description": "Click em \"Remover\" no item com erro de estoque"
+      },
+      {
+        "type": "action",
+        "description": "Click em \"Concluir Venda\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Venda concluída\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "Falha no pagamento ao concluir venda e exibição de mensagem de erro",
+    "description": "Verifica que uma falha no processamento do pagamento mostra mensagem de erro no checkout.",
+    "category": "PDV / Checkout",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"PDV\" (ou \"POS\") no menu de administração"
+      },
+      {
+        "type": "action",
+        "description": "Click em \"Iniciar Venda\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Corte\" into the search field for products/services"
+      },
+      {
+        "type": "action",
+        "description": "Press Enter"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Cartão\" from the payment method dropdown"
+      },
+      {
+        "type": "action",
+        "description": "Click em \"Concluir Venda\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Falha no pagamento\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC021",
+    "title": "Após falha no pagamento, tentar novamente e concluir venda com sucesso",
+    "description": "Verifica que após erro de pagamento o usuário pode tentar novamente e finalizar a venda com sucesso.",
+    "category": "PDV / Checkout",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"PDV\" (ou \"POS\") no menu de administração"
+      },
+      {
+        "type": "action",
+        "description": "Click em \"Iniciar Venda\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Corte\" into the search field for products/services"
+      },
+      {
+        "type": "action",
+        "description": "Press Enter"
+      },
+      {
+        "type": "action",
+        "description": "Click em \"Concluir Venda\""
+      },
+      {
+        "type": "action",
+        "description": "Click em \"Tentar novamente\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Venda concluída\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC022",
+    "title": "Após falha no pagamento, cancelar a venda e retornar ao estado inicial do PDV",
+    "description": "Verifica que após erro de pagamento o usuário consegue cancelar a venda e voltar ao PDV sem resumo de conclusão.",
+    "category": "PDV / Checkout",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"PDV\" (ou \"POS\") no menu de administração"
+      },
+      {
+        "type": "action",
+        "description": "Click em \"Iniciar Venda\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Corte\" into the search field for products/services"
+      },
+      {
+        "type": "action",
+        "description": "Press Enter"
+      },
+      {
+        "type": "action",
+        "description": "Click em \"Concluir Venda\""
+      },
+      {
+        "type": "action",
+        "description": "Click em \"Cancelar\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Iniciar Venda\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC023",
+    "title": "Criar produto com variações e estoque inicial (sem badge de baixo estoque)",
+    "description": "Verifica que um produto pode ser cadastrado com variações e estoque inicial e aparece listado com a quantidade correta.",
+    "category": "Gestão de Estoque",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/admin\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Produtos\" in the main navigation/menu"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add Product\" button"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Pomada Modeladora Premium\" into the product name field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"49.90\" into the price field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Matte, Brilho\" into the variations field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"25\" into the initial stock quantity field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Pomada Modeladora Premium\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"25\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC024",
+    "title": "Criar produto com estoque baixo e validar badge/alerta visual",
+    "description": "Verifica que ao cadastrar um produto com estoque baixo, o alerta visual de baixo estoque é exibido na listagem.",
+    "category": "Gestão de Estoque",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/admin\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Produtos\" in the main navigation/menu"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add Product\" button"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Lâmina de Barbear\" into the product name field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"3.50\" into the price field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Unidade\" into the variations field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"1\" into the initial stock quantity field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Lâmina de Barbear\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"baixo\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC025",
+    "title": "Validação: impedir salvar produto com campo obrigatório em branco e depois salvar com sucesso",
+    "description": "Verifica mensagens de validação ao tentar salvar com campo obrigatório vazio e que o produto é salvo após corrigir.",
+    "category": "Gestão de Estoque",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/admin\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Produtos\" in the main navigation/menu"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add Product\" button"
+      },
+      {
+        "type": "action",
+        "description": "Type \"0\" into the price field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"obrigatório\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Shampoo Barba\" into the product name field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Shampoo Barba\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC026",
+    "title": "Validação: impedir salvar produto com preço inválido e depois corrigir",
+    "description": "Verifica que o sistema bloqueia o salvamento com preço inválido e permite salvar após corrigir o valor.",
+    "category": "Gestão de Estoque",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/admin\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Produtos\" in the main navigation/menu"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add Product\" button"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Óleo para Barba\" into the product name field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"-10\" into the price field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"preço\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"29.90\" into the price field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Óleo para Barba\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC027",
+    "title": "Criar novo cliente pela página de clientes e validar aparição na lista",
+    "description": "Verifica que um usuário autenticado consegue adicionar um cliente e vê-lo imediatamente na lista de clientes.",
+    "category": "Gestão de Clientes",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Login\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Clientes\" item in the main navigation/menu"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Add Client\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Cliente Teste E2E\" into the name field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"11999990000\" into the phone field"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Save\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Cliente Teste E2E\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC028",
+    "title": "Pesquisar cliente inexistente e criar cliente via CTA do estado vazio",
+    "description": "Verifica que ao buscar um cliente inexistente o sistema exibe estado vazio com CTA e permite cadastrar um novo cliente a partir dele.",
+    "category": "Gestão de Clientes",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Login\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Clientes\" item in the main navigation/menu"
+      },
+      {
+        "type": "action",
+        "description": "Type \"ZZZ_CLIENTE_INEXISTENTE_123\" into the search input"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"No clients\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Add Client\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Add Client\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Cliente Novo via Busca\" into the name field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"11888887777\" into the phone field"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Save\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Cliente Novo via Busca\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC029",
+    "title": "Validação de campos obrigatórios ao tentar salvar cliente vazio",
+    "description": "Verifica que o sistema bloqueia o salvamento quando campos obrigatórios não são preenchidos e exibe mensagens visíveis de validação.",
+    "category": "Gestão de Clientes",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Login\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Clientes\" item in the main navigation/menu"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Add Client\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Save\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Name is required\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Phone is required\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC030",
+    "title": "Dashboard: visualizar métricas e trocar filtro de período para Hoje",
+    "description": "Verifica que o Dashboard carrega e que ao selecionar o período 'Hoje' as métricas principais são exibidas/atualizadas.",
+    "category": "Dashboard e Relatórios",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Login\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/admin\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Dashboard\" (or equivalent navigation item)"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Hoje\" from the period filter dropdown"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Receita Total\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC031",
+    "title": "Dashboard: trocar filtro de período para Semana e ver métricas visíveis",
+    "description": "Verifica que ao selecionar 'Semana' o usuário continua vendo as métricas principais (indicando atualização por período).",
+    "category": "Dashboard e Relatórios",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Login\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Dashboard\" (or equivalent navigation item)"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Semana\" from the period filter dropdown"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Ticket Médio\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Conversão\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC032",
+    "title": "Dashboard: trocar filtro de período para Mês e ver métricas visíveis",
+    "description": "Verifica que ao selecionar 'Mês' as métricas principais permanecem disponíveis no Dashboard.",
+    "category": "Dashboard e Relatórios",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Login\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Dashboard\" (or equivalent navigation item)"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Mês\" from the period filter dropdown"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Receita Total\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Ticket Médio\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC033",
+    "title": "Dashboard: acessar detalhamento ao clicar em um barbeiro (gráficos de breakdown)",
+    "description": "Verifica que ao clicar em um barbeiro no Dashboard, o detalhamento com gráficos de breakdown é exibido.",
+    "category": "Dashboard e Relatórios",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Login\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Dashboard\" (or equivalent navigation item)"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Barbeiro\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first visible barber name in the barber list/chart legend"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Categoria\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC034",
+    "title": "Dashboard: estado de carregamento visível antes das métricas aparecerem",
+    "description": "Verifica que o Dashboard apresenta skeletons/spinner durante o carregamento antes de renderizar as métricas.",
+    "category": "Dashboard e Relatórios",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Login\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Dashboard\" (or equivalent navigation item)"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"loading\" (spinner or skeleton placeholders) is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Receita Total\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC035",
+    "title": "Dashboard: trocar período enquanto carrega e ver indicador de carregamento",
+    "description": "Verifica que ao trocar o filtro de período o sistema indica recarregamento (spinner/skeleton) e mantém a página consistente.",
+    "category": "Dashboard e Relatórios",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Login\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Dashboard\" (or equivalent navigation item)"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Semana\" from the period filter dropdown"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"loading\" (spinner or skeleton placeholders) is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Conversão\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC036",
+    "title": "Dashboard: validação visual dos três KPIs principais na primeira renderização",
+    "description": "Verifica que os três KPIs principais (Receita Total, Ticket Médio, Conversão) aparecem no Dashboard após o carregamento.",
+    "category": "Dashboard e Relatórios",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Login\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Dashboard\" (or equivalent navigation item)"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Receita Total\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Ticket Médio\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Conversão\" is visible"
+      }
+    ]
+  }
+]

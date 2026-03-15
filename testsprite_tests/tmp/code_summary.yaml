@@ -1,0 +1,89 @@
+version: "2"
+type: frontend
+tech_stack:
+  - TypeScript
+  - React
+  - Vite
+  - TailwindCSS
+  - Supabase
+  - Lucide React
+routes:
+  - path: /login
+    file: pages/LoginPage.tsx
+    auth_required: false
+    description: Página de acesso ao sistema
+  - path: /registro
+    file: pages/RegisterPage.tsx
+    auth_required: false
+    description: Cadastro de novas barbearias
+  - path: /admin/dashboard
+    file: pages/Dashboard.tsx
+    auth_required: true
+    description: Visão geral e métricas
+  - path: /admin/agenda
+    file: pages/AgendaPage.tsx
+    auth_required: true
+    description: Calendário de agendamentos
+  - path: /admin/pos
+    file: pages/POSPage.tsx
+    auth_required: true
+    description: Ponto de venda (atendimento e checkout)
+  - path: /admin/clientes
+    file: pages/ClientsPage.tsx
+    auth_required: true
+    description: Gerenciamento de clientes
+  - path: /admin/vendas
+    file: pages/TransactionsPage.tsx
+    auth_required: true
+    description: Histórico financeiro
+  - path: /admin/produtos
+    file: pages/InventoryPage.tsx
+    auth_required: true
+    description: Controle de estoque
+features:
+  - name: Registro de Loja
+    description: Cadastro multi-etapa para novas barbearias
+    files:
+      - pages/RegisterPage.tsx
+    entry_route: /registro
+    user_interactions:
+      - Preencher dados pessoais (Passo 1)
+      - Preencher "Nome da sua barbearia" (Passo 2)
+      - Clicar em Finalizar Cadastro
+    api_calls:
+      - method: RPC
+        endpoint: register_new_tenant
+    auth_required: false
+  - name: Agenda de Horários
+    description: Gerenciamento de marcações em tempo real
+    files:
+      - pages/AgendaPage.tsx
+    entry_route: /admin/agenda
+    user_interactions:
+      - Clicar em horário vazio para agendar
+      - Selecionar profissional e serviço
+      - Selecionar ou pesquisar cliente (ClientSelect)
+      - Salvar agendamento
+    api_calls:
+      - method: INSERT
+        endpoint: appointments
+    auth_required: true
+  - name: PDV / Checkout
+    description: Finalização de atendimentos e venda de produtos
+    files:
+      - pages/POSPage.tsx
+      - components/CheckoutModal.tsx
+    entry_route: /admin/pos
+    user_interactions:
+      - Selecionar agendamento ou Iniciar Venda
+      - Adicionar itens (produtos/serviços) via busca ou Enter
+      - Escolher método de pagamento
+      - Concluir venda e ver resumo de sucesso
+    api_calls:
+      - method: RPC
+        endpoint: process_sale
+    auth_required: true
+known_limitations:
+  - issue: Sincronização da agenda pode ter atraso em conexões lentas
+    location: pages/AgendaPage.tsx
+    impact: Usuário pode precisar de um fetch manual (fallback já implementado)

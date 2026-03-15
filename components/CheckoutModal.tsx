@@ -27,7 +27,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const { profile } = useAuth();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<'items' | 'payment'>('items');
+  const [step, setStep] = useState<'items' | 'payment' | 'success'>('items');
   
   // Checkout Items
   const [items, setItems] = useState<CheckoutItem[]>([]);
@@ -178,6 +178,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     addToast(`${product.name} adicionado!`, 'success');
   };
 
+  const handleServiceKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && filteredServices.length > 0) {
+      addService(filteredServices[0]);
+    }
+  };
+
+  const handleProductKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && filteredProducts.length > 0) {
+      addProduct(filteredProducts[0]);
+    }
+  };
+
   const removeItem = (id: string, type: string) => {
     setItems(items.filter(i => !(i.id === id && i.type === type)));
   };
@@ -185,11 +197,32 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const subtotal = items.reduce((acc, i) => acc + (i.price * i.quantity), 0);
   const total = Math.max(0, subtotal - discount);
 
+  const hasStockError = useMemo(() => {
+    return items.some(item => {
+      if (item.type !== 'PRODUCT') return false;
+      const product = allProducts.find(p => p.id === item.id);
+      return product && product.stock < item.quantity;
+    });
+  }, [items, allProducts]);
+
   const handleFinish = async (forcedMethod?: 'PIX' | 'CARD' | 'CASH') => {
     if (!profile?.tenant_id) return;
     const finalMethod = forcedMethod || paymentMethod;
     if (!finalMethod && step === 'payment') {
       addToast('Selecione um método de pagamento.', 'warning');
+      return;
+    }
+
+    // Validação de estoque antes de finalizar
+    const itemsWithInsufficientStock = items.filter(item => {
+      if (item.type !== 'PRODUCT') return false;
+      const product = allProducts.find(p => p.id === item.id);
+      return product && product.stock < item.quantity;
+    });
+
+    if (itemsWithInsufficientStock.length > 0) {
+      addToast(`Estoque insuficiente para: ${itemsWithInsufficientStock.map(i => i.name).join(', ')}`, 'error');
+      setStep('items');
       return;
     }
 
@@ -234,7 +267,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
       addToast('Venda finalizada com sucesso!', 'success');
       onComplete();
-      onClose();
+      setStep('success'); // Mudar para tela de sucesso em vez de fechar
     } catch (err: any) {
       console.error(err);
       addToast('Erro ao finalizar venda.', 'error');
@@ -296,6 +329,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     placeholder="Adicionar serviço (Corte...)" 
                     value={serviceSearchTerm}
                     onChange={e => setServiceSearchTerm(e.target.value)}
+                    onKeyDown={handleServiceKeyDown}
                     className="bg-slate-900 border-slate-800"
                   />
                   {filteredServices.length > 0 && (
@@ -328,6 +362,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     placeholder="Adicionar produto (Creme...)" 
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
+                    onKeyDown={handleProductKeyDown}
                     className="bg-slate-900 border-slate-800"
                   />
                   {filteredProducts.length > 0 && (
@@ -448,9 +483,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     Outros <ChevronRight className="ml-2" size={18} />
                   </Button>
                 </div>
-             </div>
-          </div>
-        ) : (
+              </div>
+           </div>
+        ) : step === 'payment' ? (
           <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-300">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                {[
@@ -496,10 +531,44 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
             <div className="flex gap-3">
               <Button variant="secondary" className="flex-1 h-12 font-bold" onClick={() => setStep('items')}>Voltar</Button>
-              <Button className="flex-[2] h-12 font-bold" onClick={() => handleFinish()} disabled={loading}>
-                {loading ? 'Finalizando...' : 'Concluir Venda'}
+              <Button className="flex-[2] h-12 font-bold" onClick={() => handleFinish()} disabled={loading || hasStockError}>
+                {loading ? 'Finalizando...' : hasStockError ? 'Estoque Insuficiente' : 'Concluir Venda'}
               </Button>
             </div>
+          </div>
+        ) : (
+          <div className="text-center space-y-6 py-8 animate-in zoom-in duration-500">
+            <div className="w-20 h-20 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-emerald-500/30">
+              <CheckCircle2 size={48} />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black text-white">Venda Concluída!</h2>
+              <p className="text-slate-400">O atendimento foi finalizado com sucesso.</p>
+            </div>
+            
+            <div className="p-6 bg-slate-900/40 rounded-3xl border border-slate-800 space-y-4 text-left">
+               <div className="flex justify-between items-center pb-4 border-b border-slate-800/50">
+                 <span className="text-slate-500 font-bold uppercase text-xs tracking-widest">Resumo do Recebimento</span>
+                 <Badge variant="success">{paymentMethod}</Badge>
+               </div>
+               <div className="space-y-4">
+                 <div className="flex justify-between items-center">
+                   <span className="text-slate-400 text-sm">Total Pago</span>
+                   <span className="text-2xl font-black text-emerald-500">R$ {total.toFixed(2)}</span>
+                 </div>
+                 <div className="flex justify-between text-xs">
+                   <span className="text-slate-400">Cliente</span>
+                   <span className="text-slate-200 font-bold">{selectedClient?.name || 'Venda Avulsa'}</span>
+                 </div>
+                 <div className="flex justify-between text-xs border-t border-slate-800/50 pt-2">
+                   <span className="text-slate-400 italic">Uma cópia do comprovante foi enviada para o histórico do cliente.</span>
+                 </div>
+               </div>
+            </div>
+
+            <Button className="w-full h-12 font-bold" onClick={onClose}>
+              Fechar e Voltar
+            </Button>
           </div>
         )}
       </div>

@@ -1,0 +1,26 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000",
+  "loginUser": "rafael.v.oliveira0806@gmail.com",
+  "loginPassword": "@Rvo080697",
+  "executionArgs": {
+    "projectName": "meuBarbeiro",
+    "projectPath": "C:\\Users\\rafae\\OneDrive\\DOCUME~1\\MEUBAR~1",
+    "testIds": [
+      "TC010",
+      "TC012",
+      "TC002",
+      "TC013",
+      "TC016"
+    ],
+    "additionalInstruction": "Execute os testes das correções (TC010, TC012, TC002, TC013, TC016). O ambiente de Playwright agora deve estar configurado. O projeto está em http://localhost:3000 em modo preview.",
+    "serverMode": "production",
+    "envs": {
+      "API_KEY": "sk-user-tiuorlLuTCKcUOExSgzmGNKm2HpNKwBiVcoI40n-mbu0QJdf0WAzPF3UmTD7jHWbI0NfNY7I72OqitJzrB0l8w0cOj6WDeOnXfEHM39iW_OxTzXWk1YqEWD5QgtSZx9q7yI"
+    }
+  },
+  "serverPort": 53856,
+  "proxy": "http://c6255c3d-7648-4692-9458-def50d842343:IeB4pioskq4SvKDjcOMt29MNVyC9lqgm@tun.testsprite.com:8080"
+}

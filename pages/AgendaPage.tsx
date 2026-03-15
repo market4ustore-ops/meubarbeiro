@@ -3,26 +3,25 @@ import { useNavigate, Link } from 'react-router-dom';
 import {
   Plus,
   Search as SearchIcon,
- // Keep Search, remove Search as SearchIcon
-  Lock, // Keep one Lock
   Calendar as CalendarIcon,
   Clock,
-  CheckCircle2, // Keep one CheckCircle2
-  XCircle,
   Edit,
   User as UserIcon,
+  LayoutGrid,
+  List as ListIcon,
+  Eye,
+  Zap,
+  LayoutGrid as LayoutGridIcon,
+  CheckCircle2,
+  XCircle,
   ChevronLeft,
   ChevronRight,
-  LayoutGrid, // Keep one LayoutGrid
-  List as ListIcon, // Keep one List as ListIcon
   Users,
   Filter,
   Phone,
   Scissors,
   UserCheck,
   AlertCircle,
-  Eye,
-  Zap,
   Settings
 } from 'lucide-react';
 import { Card, Button, Input, Badge, Modal, EmptyState } from '../components/UI';
@@ -315,10 +314,13 @@ const AgendaPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const [isSaving, setIsSaving] = useState(false);
+
   const handleSaveAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profile?.tenant_id) return;
+    if (!profile?.tenant_id || isSaving) return;
 
+    setIsSaving(true);
     const formData = new FormData(e.currentTarget as HTMLFormElement);
     const serviceId = formData.get('serviceId') as string;
     const selectedSvc = services.find(s => s.id === serviceId);
@@ -338,6 +340,13 @@ const AgendaPage: React.FC = () => {
     };
 
     try {
+      // Validation
+      if (!clientName && !selectedClientId) {
+        addToast('Por favor, selecione ou cadastre um cliente.', 'error');
+        setIsSaving(false);
+        return;
+      }
+
       if (editingAppointment) {
         const { error } = await supabase
           .from('appointments')
@@ -354,10 +363,15 @@ const AgendaPage: React.FC = () => {
         if (error) throw error;
         addToast('Novo agendamento criado!', 'success');
       }
+      
+      // Close modal and refresh data (as fallback to Realtime)
       setIsModalOpen(false);
+      await fetchAgendaData();
     } catch (err: any) {
       console.error('Error saving appointment:', err);
-      addToast('Erro ao salvar agendamento.', 'error');
+      addToast('Erro ao salvar agendamento: ' + (err.message || ''), 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -650,7 +664,7 @@ const AgendaPage: React.FC = () => {
                 description="Não encontramos agendamentos para os filtros selecionados. Que tal cadastrar um novo?"
                 action={
                   <Button variant="secondary" onClick={() => handleOpenModal()}>
-                    <Plus size={16} /> Novo Agendamento
+                     <Plus size={16} /> Novo Agendamento
                   </Button>
                 }
               />
@@ -731,7 +745,7 @@ const AgendaPage: React.FC = () => {
           <ClientSelect
             tenantId={profile?.tenant_id || ''}
             selectedClientId={selectedClientId}
-            onChange={(client) => {
+            onSelect={(client) => {
               setSelectedClientId(client.id);
               setClientName(client.name);
               setClientPhone(client.phone);
@@ -815,8 +829,10 @@ const AgendaPage: React.FC = () => {
           <Input name="notes" label="Observações Privadas" defaultValue={editingAppointment?.notes} placeholder="Ex: Gosta de café, corte degradê baixo..." />
 
           <div className="pt-6 flex gap-3">
-            <Button variant="secondary" className="flex-1 h-12" type="button" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-            <Button className="flex-[2] h-12 font-bold" type="submit">Salvar Agendamento</Button>
+            <Button variant="secondary" className="flex-1 h-12" type="button" onClick={() => setIsModalOpen(false)} disabled={isSaving}>Cancelar</Button>
+            <Button className="flex-[2] h-12 font-bold" type="submit" isLoading={isSaving}>
+              {editingAppointment ? 'Atualizar' : 'Salvar'} Agendamento
+            </Button>
           </div>
         </form>
       </Modal>
