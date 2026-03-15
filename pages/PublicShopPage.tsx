@@ -769,7 +769,7 @@ const PublicShopPage: React.FC = () => {
         {/* Footer */}
         <div className="mt-20 text-center space-y-4">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900/50 rounded-full border border-slate-800">
-            <Scissors size={14} style={{ color: primaryColor }} />
+            <img src="/logo.png" alt="Logomarca Meu Barbeiro" className="h-4 w-auto grayscale opacity-70" />
             <span className="font-black text-[10px] text-slate-500 uppercase tracking-widest">Powered by MeuBarbeiro</span>
           </div>
           <p className="text-[10px] text-slate-700 uppercase tracking-widest font-medium">

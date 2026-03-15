@@ -61,7 +61,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
           time,
           status,
           services (name),
-          users (name)
+          users!appointments_barber_id_fkey (name)
         `)
         .eq('tenant_id', profile.tenant_id);
 
@@ -71,6 +71,10 @@ export const ClientModal: React.FC<ClientModalProps> = ({
       } else {
         query.eq('client_phone', clientPhone);
       }
+
+      // USANDO NOME PORQUE O SCHEMA PODE ESTAR SEM O CLIENT_ID CORRETO.
+      // Cast to any to fix deep instantiation error when chaining .eq
+      (query as any).eq('client_name', editingClient?.name || name);
 
       const { data, error } = await query
         .order('date', { ascending: false })

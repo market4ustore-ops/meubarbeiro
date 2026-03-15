@@ -196,7 +196,7 @@ export const BarberModal: React.FC<BarberModalProps> = ({
           <Button
             className="flex-1"
             type="submit"
-            loading={loading}
+            isLoading={loading}
             disabled={!editingBarber && !isPasswordSecure}
           >
             {editingBarber ? "Salvar Alterações" : "Cadastrar Membro"}

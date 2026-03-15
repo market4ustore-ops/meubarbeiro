@@ -26,6 +26,7 @@ export interface Database {
                     tenant_id: string | null
                     time: string
                     total_duration: number | null
+                    client_id: string | null
                 }
                 Insert: {
                     barber_id?: string | null
@@ -41,6 +42,7 @@ export interface Database {
                     tenant_id?: string | null
                     time: string
                     total_duration?: number | null
+                    client_id?: string | null
                 }
                 Update: {
                     barber_id?: string | null
@@ -56,6 +58,7 @@ export interface Database {
                     tenant_id?: string | null
                     time?: string
                     total_duration?: number | null
+                    client_id?: string | null
                 }
                 Relationships: [
                     {
@@ -260,6 +263,87 @@ export interface Database {
                         columns: ["user_id"]
                         isOneToOne: false
                         referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    },
+                ]
+            }
+            client_barbers: {
+                Row: {
+                    barber_id: string
+                    client_id: string
+                    created_at: string
+                    tenant_id: string
+                }
+                Insert: {
+                    barber_id: string
+                    client_id: string
+                    created_at?: string
+                    tenant_id: string
+                }
+                Update: {
+                    barber_id?: string
+                    client_id?: string
+                    created_at?: string
+                    tenant_id?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "client_barbers_barber_id_fkey"
+                        columns: ["barber_id"]
+                        isOneToOne: false
+                        referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "client_barbers_client_id_fkey"
+                        columns: ["client_id"]
+                        isOneToOne: false
+                        referencedRelation: "clients"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "client_barbers_tenant_id_fkey"
+                        columns: ["tenant_id"]
+                        isOneToOne: false
+                        referencedRelation: "tenants"
+                        referencedColumns: ["id"]
+                    },
+                ]
+            }
+            clients: {
+                Row: {
+                    created_at: string | null
+                    id: string
+                    name: string
+                    notes: string | null
+                    phone: string
+                    tenant_id: string
+                    updated_at: string | null
+                }
+                Insert: {
+                    created_at?: string | null
+                    id?: string
+                    name: string
+                    notes?: string | null
+                    phone: string
+                    tenant_id: string
+                    updated_at?: string | null
+                }
+                Update: {
+                    created_at?: string | null
+                    id?: string
+                    name?: string
+                    notes?: string | null
+                    phone?: string
+                    tenant_id?: string
+                    updated_at?: string | null
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "clients_tenant_id_fkey"
+                        columns: ["tenant_id"]
+                        isOneToOne: false
+                        referencedRelation: "tenants"
                         referencedColumns: ["id"]
                     },
                 ]
@@ -829,6 +913,16 @@ export interface Database {
                     p_client_phone: string
                     p_total: number
                     p_items: Json
+                    p_client_id: string
+                }
+                Returns: Json
+            }
+            process_sale: {
+                Args: {
+                    p_transaction: Json
+                    p_inventory_items: Json
+                    p_appointment_id: string
+                    p_order_id: string
                 }
                 Returns: Json
             }

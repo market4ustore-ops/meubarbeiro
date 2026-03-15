@@ -202,10 +202,19 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         commission_amount: commissionAmount
       };
 
+      // Limpeza profunda para evitar estruturas circulares (como elementos DOM ou funções)
+      const cleanTransactionData = JSON.parse(JSON.stringify(transactionData));
+      const cleanInventoryItems = items
+        .filter(i => i.type === 'PRODUCT')
+        .map(i => ({ 
+          id: i.id, 
+          quantity: i.quantity 
+        }));
+
       await processSale({
-        transaction: transactionData,
-        appointmentId: appointment?.id,
-        inventoryItems: items.filter(i => i.type === 'PRODUCT').map(i => ({ id: i.id, quantity: i.quantity }))
+        transaction: cleanTransactionData,
+        appointmentId: appointment?.id || null,
+        inventoryItems: cleanInventoryItems
       });
 
       addToast('Venda finalizada com sucesso!', 'success');
@@ -472,7 +481,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
             <div className="flex gap-3">
               <Button variant="secondary" className="flex-1 h-12 font-bold" onClick={() => setStep('items')}>Voltar</Button>
-              <Button className="flex-[2] h-12 font-bold" onClick={handleFinish} disabled={loading}>
+              <Button className="flex-[2] h-12 font-bold" onClick={() => handleFinish()} disabled={loading}>
                 {loading ? 'Finalizando...' : 'Concluir Venda'}
               </Button>
             </div>

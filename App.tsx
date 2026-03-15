@@ -59,12 +59,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, on
 
       <aside className={`fixed top-0 left-0 bottom-0 w-72 bg-slate-950 border-r border-slate-800 z-50 transition-transform duration-300 lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col h-full p-6">
-          <div className="flex items-center gap-3 mb-10">
-            <div className="p-2 bg-emerald-600 rounded-xl shadow-lg shadow-emerald-500/20">
-              <Scissors className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-xl font-bold text-white tracking-tight">MeuBarbeiro</span>
-          </div>
+          <img src="/logo.png" alt="Logomarca Meu Barbeiro" className="h-10 w-auto mb-10" />
 
           <nav className="flex-1 space-y-2">
             {navItems.map((item) => (

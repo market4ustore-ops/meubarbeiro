@@ -484,7 +484,7 @@ const FinancialPage: React.FC = () => {
 
           <div className="flex gap-3 pt-4">
             <Button variant="secondary" className="flex-1" type="button" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-            <Button className="flex-1" type="submit" loading={formLoading}>Registrar Despesa</Button>
+            <Button className="flex-1" type="submit" isLoading={formLoading}>Registrar Despesa</Button>
           </div>
         </form>
       </Modal>

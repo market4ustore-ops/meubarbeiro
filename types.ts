@@ -1,3 +1,7 @@
+import { Database } from './lib/database.types';
+
+export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
+export type Enums<T extends keyof Database['public']['Enums']> = Database['public']['Enums'][T];
 
 export enum AppointmentStatus {
   PENDING = 'PENDING',
@@ -50,6 +54,8 @@ export interface BarberService {
   service_id: string;
 }
 
+export type Service = Tables<'services'>;
+/*
 export interface Service {
   id: string;
   name: string;
@@ -61,7 +67,13 @@ export interface Service {
   featured: boolean;
   description?: string;
 }
+*/
 
+export type Product = Tables<'products'> & { 
+  categories?: { name: string, color: string },
+  has_variations?: boolean 
+};
+/*
 export interface Product {
   id: string;
   name: string;
@@ -74,6 +86,7 @@ export interface Product {
   image: string;
   has_variations: boolean;
 }
+*/
 
 export interface Appointment {
   id: string;
@@ -246,6 +259,11 @@ export interface ClientAppointmentHistory {
   status: string;
 }
 
+export type Client = Tables<'clients'> & {
+  barbers?: { id: string; name: string }[];
+  appointments?: ClientAppointmentHistory[];
+};
+/*
 export interface Client {
   id: string;
   tenant_id: string;
@@ -257,6 +275,8 @@ export interface Client {
   barbers?: { id: string; name: string }[];
   appointments?: ClientAppointmentHistory[];
 }
+*/
+
 export interface CheckoutItem {
   type: 'SERVICE' | 'PRODUCT';
   id: string;
@@ -265,6 +285,8 @@ export interface CheckoutItem {
   quantity: number;
 }
 
+export type FinancialTransaction = Tables<'financial_transactions'>;
+/*
 export interface FinancialTransaction {
   id: string;
   tenant_id: string;
@@ -282,3 +304,4 @@ export interface FinancialTransaction {
   items?: CheckoutItem[] | null;
   discount_amount?: number | null;
 }
+*/

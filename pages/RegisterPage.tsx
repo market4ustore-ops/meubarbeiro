@@ -277,8 +277,8 @@ const RegisterPage: React.FC = () => {
 
         {/* Header */}
         <div className="text-center space-y-2">
-          <Link to="/login" className="inline-flex p-3 bg-emerald-600 rounded-2xl shadow-lg shadow-emerald-500/20 mb-4 hover:scale-105 transition-transform">
-            <Scissors className="w-8 h-8 text-white" />
+          <Link to="/login" className="inline-block mb-6 hover:scale-105 transition-transform">
+            <img src="/logo.png" alt="Logomarca Meu Barbeiro" className="h-12 w-auto mx-auto" />
           </Link>
           <h1 className="text-3xl font-bold tracking-tight text-white">Comece sua jornada</h1>
           <p className="text-slate-400">Digitalize sua barbearia e profissionalize sua gestão</p>

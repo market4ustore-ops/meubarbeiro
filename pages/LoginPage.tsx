@@ -60,10 +60,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-emerald-950/20 via-transparent to-transparent">
       <div className="w-full max-w-md space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
         <div className="text-center space-y-2">
-          <div className="inline-flex p-3 bg-emerald-600 rounded-2xl shadow-lg shadow-emerald-500/20 mb-4">
-            <Scissors className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">MeuBarbeiro</h1>
+          <img src="/logo.png" alt="Logomarca Meu Barbeiro" className="h-12 w-auto mx-auto mb-6" />
           <p className="text-slate-400">Entre na plataforma para gerenciar seu dia a dia</p>
         </div>
 

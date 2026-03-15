@@ -44,10 +44,7 @@ const LandingPage: React.FC = () => {
           <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between gap-8 md:gap-12 lg:gap-16">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-3 group shrink-0">
-              <div className="p-1.5 bg-emerald-600 rounded-lg shadow-lg shadow-emerald-500/20 group-hover:shadow-emerald-500/40 transition-shadow">
-                <Scissors className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-lg font-bold text-white tracking-tight">MeuBarbeiro</span>
+              <img src="/logo.png" alt="Logomarca Meu Barbeiro" className="h-8 w-auto" />
             </Link>
 
             {/* Desktop Navigation */}
@@ -660,10 +657,7 @@ const LandingPage: React.FC = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-12 mb-20">
             <div className="col-span-2 space-y-8">
               <Link to="/" className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-600 rounded-xl shadow-lg shadow-emerald-500/20">
-                  <Scissors className="w-6 h-6 text-white" />
-                </div>
-                <span className="text-2xl font-black text-white tracking-tighter">MeuBarbeiro</span>
+                <img src="/logo.png" alt="Logomarca Meu Barbeiro" className="h-10 w-auto" />
               </Link>
               <p className="text-slate-500 max-w-xs leading-relaxed">
                 A plataforma definitiva para barbeiros modernos que buscam excelência em gestão e atendimento.

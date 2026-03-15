@@ -39,17 +39,52 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cakto-signature',
 }
 
-// Verificar assinatura do webhook
-function verifyWebhookSignature(payload: string, signature: string | null, secret: string): boolean {
-    if (!secret) return true // Se não tem segredo configurado, libera
+// Verificar assinatura do webhook (HMAC SHA256)
+async function verifyWebhookSignature(payload: string, signature: string | null, secret: string): Promise<boolean> {
     if (!signature) {
-        console.warn('Webhook received without signature header')
-        return false
+        console.warn('Webhook received without signature header');
+        return false;
     }
 
-    console.log('Webhook signature received:', signature.substring(0, 20) + '...')
-    // Em produção, implementar a verificação real aqui
-    return true
+    // A Cakto geralmente envia a assinatura em hexadecimal ou base64
+    // Para simplificar a implementação imediata e garantir que NUNCA seja pulada:
+    if (secret === 'CHANGE_ME' || !secret) {
+        console.error('CRITICAL: CAKTO_WEBHOOK_SECRET not properly configured.');
+        return false;
+    }
+
+    try {
+        const encoder = new TextEncoder();
+        const keyData = encoder.encode(secret);
+        const cryptoKey = await crypto.subtle.importKey(
+            'raw',
+            keyData,
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['verify']
+        );
+
+        const signatureData = hexToBytes(signature);
+        const isValid = await crypto.subtle.verify(
+            'HMAC',
+            cryptoKey,
+            signatureData,
+            encoder.encode(payload)
+        );
+
+        return isValid;
+    } catch (err) {
+        console.error('Error verifying signature:', err);
+        return false;
+    }
+}
+
+function hexToBytes(hex: string): Uint8Array {
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) {
+        bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+    }
+    return bytes;
 }
 
 serve(async (req) => {
@@ -74,18 +109,25 @@ serve(async (req) => {
         console.log('Received Cakto webhook:', payload.event)
         console.log('Raw body:', rawBody)
 
-        // Verificar assinatura (opcional, mas recomendado)
-        const signature = req.headers.get('x-cakto-signature')
-        const webhookSecret = Deno.env.get('CAKTO_WEBHOOK_SECRET')
+        // Verificar assinatura (OBRIGATÓRIO)
+        const signature = req.headers.get('x-cakto-signature');
+        const webhookSecret = Deno.env.get('CAKTO_WEBHOOK_SECRET');
 
-        if (webhookSecret) {
-            if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
-                console.error('Invalid webhook signature check failed')
-                // Por enquando, vamos apenas avisar no log mas não dar 401 para permitir o teste inicial
-                // return new Response(...) 
-            }
-        } else {
-            console.log('CAKTO_WEBHOOK_SECRET not set, skipping signature verification')
+        if (!webhookSecret) {
+            console.error('CRITICAL: CAKTO_WEBHOOK_SECRET not set in environment variables');
+            return new Response(
+                JSON.stringify({ error: 'Webhook secret not configured' }),
+                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+
+        const isSignatureValid = await verifyWebhookSignature(rawBody, signature, webhookSecret);
+        if (!isSignatureValid) {
+            console.error('Invalid webhook signature check failed');
+            return new Response(
+                JSON.stringify({ error: 'Invalid signature' }),
+                { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
         }
 
         // Criar cliente Supabase com service role key

@@ -13,9 +13,7 @@ const EmailConfirmedPage: React.FC = () => {
 
                 {/* Logo */}
                 <div className="text-center">
-                    <div className="inline-flex p-3 bg-emerald-600 rounded-2xl shadow-lg shadow-emerald-500/20 mb-6">
-                        <Scissors className="w-8 h-8 text-white" />
-                    </div>
+                    <img src="/logo.png" alt="Logomarca Meu Barbeiro" className="h-12 w-auto mx-auto mb-6" />
                 </div>
 
                 <Card className="p-1 backdrop-blur-md overflow-hidden border-slate-800 shadow-2xl">
