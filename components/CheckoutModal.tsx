@@ -248,8 +248,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Finalizar Atendimento / PDV" maxWidth="max-w-2xl">
       <div className="space-y-6">
-        {/* Client Selection (Only if no fixed appointment) */}
-        {!appointment && (
+        {/* Client Selection (Only if no fixed appointment from DB) */}
+        {(!appointment || !(appointment as any).id) && (
           <div className="bg-slate-900/40 p-4 rounded-2xl border border-slate-800 space-y-4">
              <ClientSelect 
                tenantId={profile?.tenant_id || ''} 
