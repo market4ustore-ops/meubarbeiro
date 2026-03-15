@@ -76,10 +76,10 @@ const DashboardPage: React.FC = () => {
               : 'Aqui está um resumo da sua barbearia hoje.'}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <VendaExpressaButton services={services} onComplete={loadStats} className="flex-1 sm:flex-none bg-emerald-500 hover:bg-emerald-600 text-white" />
-          <Button variant="secondary" onClick={() => navigate('/admin/agenda')} className="flex-1 sm:flex-none"><Clock size={18} /> Ver Agenda</Button>
-          <Button onClick={() => navigate('/admin/agenda')} className="flex-1 sm:flex-none"><Plus size={18} /> Novo Agendamento</Button>
+        <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-2">
+          <VendaExpressaButton services={services} onComplete={loadStats} className="w-full xl:w-auto bg-emerald-500 hover:bg-emerald-600 text-white" />
+          <Button variant="secondary" onClick={() => navigate('/admin/agenda')} className="w-full xl:w-auto"><Clock size={18} /> Ver Agenda</Button>
+          <Button onClick={() => navigate('/admin/agenda')} className="w-full xl:w-auto"><Plus size={18} /> Novo Agendamento</Button>
         </div>
       </div>
 
