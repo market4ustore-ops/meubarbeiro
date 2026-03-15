@@ -50,7 +50,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       if (appointment) {
-        const mainService = services.find(s => s.id === appointment.service_id);
+        // Se temos um agendamento ou ID de serviço vindo do atalho
+        const serviceIdToFind = (appointment as any).service_id || appointment.serviceId;
+        const mainService = services.find(s => s.id === serviceIdToFind);
+        
         if (mainService) {
           setItems([{
             type: 'SERVICE',
@@ -59,9 +62,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             price: mainService.price,
             quantity: 1
           }]);
+        } else {
+          setItems([]);
         }
-        setSelectedClient({ id: appointment.client_id, name: appointment.client_name });
-        setSelectedBarberId(appointment.barber_id || '');
+
+        // Só define cliente se tivermos dados reais
+        const clientId = (appointment as any).client_id || appointment.clientId;
+        const clientName = (appointment as any).client_name || appointment.clientName;
+        
+        if (clientId && clientName) {
+           setSelectedClient({ id: clientId, name: clientName });
+        } else {
+           setSelectedClient(null);
+        }
+
+        setSelectedBarberId((appointment as any).barber_id || appointment.barberId || profile?.id || '');
       } else {
         setItems([]);
         setSelectedClient(null);

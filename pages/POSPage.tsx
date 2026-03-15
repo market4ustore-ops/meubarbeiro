@@ -118,7 +118,7 @@ const POSPage: React.FC = () => {
                   {topServices.map(service => (
                     <button
                       key={service.id}
-                      onClick={() => handleCheckout()}
+                      onClick={() => handleCheckout({ service_id: service.id })}
                       className="group p-4 bg-slate-900 border border-slate-800 rounded-2xl hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all text-left space-y-3"
                     >
                       <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-400 group-hover:bg-emerald-500 group-hover:text-white transition-all">
