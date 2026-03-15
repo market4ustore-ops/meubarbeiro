@@ -61,7 +61,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, on
         <div className="flex flex-col h-full p-6">
           <img src="/logo.png" alt="Logomarca Meu Barbeiro" className="h-10 w-auto mb-10" />
 
-          <nav className="flex-1 space-y-2">
+          <nav className="flex-1 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
             {navItems.map((item) => (
               <Link
                 key={item.path}
