@@ -59,7 +59,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, on
 
       <aside className={`fixed top-0 left-0 bottom-0 w-72 bg-slate-950 border-r border-slate-800 z-50 transition-transform duration-300 lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col h-full p-6">
-          <img src="/logo.png" alt="Logomarca Meu Barbeiro" className="h-10 w-auto mb-10" />
+          <img src="/logo.png" alt="Logomarca Meu Barbeiro" className="h-7 w-auto mb-6" />
 
           <nav className="flex-1 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
             {navItems.map((item) => (
