@@ -112,7 +112,10 @@ const SettingsPage: React.FC = () => {
           instagramUrl: tenant.instagram_url || '',
           facebookUrl: tenant.facebook_url || '',
           schedulingEnabled: tenant.scheduling_enabled ?? true,
-          digitalCardEnabled: tenant.digital_card_enabled ?? true
+          digitalCardEnabled: tenant.digital_card_enabled ?? true,
+          bookingFeeEnabled: tenant.booking_fee_enabled ?? false,
+          bookingFeeType: tenant.booking_fee_type || 'percentage',
+          bookingFeeValue: tenant.booking_fee_value || 0
         } as any);
       } catch (err: any) {
         console.error('Error fetching settings:', err);
@@ -156,7 +159,10 @@ const SettingsPage: React.FC = () => {
           instagram_url: settings.instagramUrl,
           facebook_url: settings.facebookUrl,
           scheduling_enabled: settings.schedulingEnabled,
-          digital_card_enabled: settings.digitalCardEnabled
+          digital_card_enabled: settings.digitalCardEnabled,
+          booking_fee_enabled: settings.bookingFeeEnabled,
+          booking_fee_type: settings.bookingFeeType,
+          booking_fee_value: settings.bookingFeeValue
         })
         .eq('id', profile.tenant_id);
 
@@ -265,10 +271,12 @@ const SettingsPage: React.FC = () => {
   ].filter(tab => !tab.ownerOnly || profile?.role === 'OWNER');
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-10">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Configurações</h1>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Store className="text-emerald-500 shrink-0" /> Configurações
+          </h1>
           <p className="text-slate-400">Gerencie a identidade e o funcionamento do seu negócio.</p>
         </div>
         {profile?.role === 'OWNER' && (
@@ -528,7 +536,7 @@ const SettingsPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setSettings({ ...settings, schedulingEnabled: !settings.schedulingEnabled })}
-                          className={`w-12 h-6 rounded-full relative transition-colors ${settings.schedulingEnabled ? 'bg-emerald-600' : 'bg-slate-800'}`}
+                          className={`w-12 h-6 shrink-0 rounded-full relative transition-colors ${settings.schedulingEnabled ? 'bg-emerald-600' : 'bg-slate-800'}`}
                         >
                           <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${settings.schedulingEnabled ? 'left-7' : 'left-1'}`}></div>
                         </button>
@@ -547,10 +555,62 @@ const SettingsPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setSettings({ ...settings, digitalCardEnabled: !settings.digitalCardEnabled })}
-                          className={`w-12 h-6 rounded-full relative transition-colors ${settings.digitalCardEnabled ? 'bg-emerald-600' : 'bg-slate-800'}`}
+                          className={`w-12 h-6 shrink-0 rounded-full relative transition-colors ${settings.digitalCardEnabled ? 'bg-emerald-600' : 'bg-slate-800'}`}
                         >
                           <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${settings.digitalCardEnabled ? 'left-7' : 'left-1'}`}></div>
                         </button>
+                      </div>
+
+                      <div className="p-4 bg-slate-950/50 rounded-xl border border-slate-800 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
+                              <CardIcon size={20} />
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-white">Taxa de Agendamento</p>
+                              <p className="text-xs text-slate-500">Cobrar um sinal para confirmar o agendamento.</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSettings({ ...settings, bookingFeeEnabled: !settings.bookingFeeEnabled })}
+                            className={`w-12 h-6 shrink-0 rounded-full relative transition-colors ${settings.bookingFeeEnabled ? 'bg-emerald-600' : 'bg-slate-800'}`}
+                          >
+                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${settings.bookingFeeEnabled ? 'left-7' : 'left-1'}`}></div>
+                          </button>
+                        </div>
+
+                        {settings.bookingFeeEnabled && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-200 pt-4 border-t border-slate-800/50">
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Tipo de Cobrança</label>
+                              <div className="flex gap-2 p-1 bg-slate-950 rounded-lg border border-slate-800">
+                                <button
+                                  type="button"
+                                  onClick={() => setSettings({ ...settings, bookingFeeType: 'percentage' })}
+                                  className={`flex-1 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${settings.bookingFeeType === 'percentage' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                                >
+                                  Porcentagem (%)
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setSettings({ ...settings, bookingFeeType: 'fixed' })}
+                                  className={`flex-1 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${settings.bookingFeeType === 'fixed' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                                >
+                                  Valor Fixo (R$)
+                                </button>
+                              </div>
+                            </div>
+                            <Input
+                              label={settings.bookingFeeType === 'percentage' ? "Porcentagem (%)" : "Valor Fixo (R$)"}
+                              type="number"
+                              value={settings.bookingFeeValue}
+                              onChange={e => setSettings({ ...settings, bookingFeeValue: Number(e.target.value) })}
+                              placeholder={settings.bookingFeeType === 'percentage' ? "Ex: 30" : "Ex: 20.00"}
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </Card>

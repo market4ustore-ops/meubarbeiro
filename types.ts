@@ -137,6 +137,9 @@ export interface ShopSettings {
   facebookUrl?: string;
   schedulingEnabled: boolean;
   digitalCardEnabled: boolean;
+  bookingFeeEnabled: boolean;
+  bookingFeeType: 'percentage' | 'fixed';
+  bookingFeeValue: number;
 }
 
 export interface User {

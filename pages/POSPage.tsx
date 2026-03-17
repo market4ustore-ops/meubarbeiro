@@ -84,16 +84,16 @@ const POSPage: React.FC = () => {
           </h1>
           <p className="text-slate-400 text-sm">Gerencie atendimentos presenciais e pedidos online.</p>
         </div>
-        <div className="flex gap-2 p-1 bg-slate-900/50 rounded-xl border border-slate-800">
+        <div className="flex w-full sm:w-auto gap-2 p-1 bg-slate-900/50 rounded-xl border border-slate-800">
           <button
             onClick={() => setActiveTab('pos')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'pos' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'pos' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
           >
             Presencial
           </button>
           <button
             onClick={() => setActiveTab('orders')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'orders' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'orders' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
           >
             Pedidos Online
           </button>
@@ -102,8 +102,8 @@ const POSPage: React.FC = () => {
 
       {activeTab === 'pos' ? (
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-          <div className="flex justify-end mb-6">
-             <QuickServiceButton onComplete={fetchData} size="lg" />
+          <div className="flex mb-6 w-full">
+             <QuickServiceButton onComplete={fetchData} size="lg" className="w-full" />
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -158,34 +158,34 @@ const POSPage: React.FC = () => {
                      />
                    ) : (
                      appointments.map(apt => (
-                       <Card key={apt.id} className="p-4 bg-slate-900/60 border-slate-800/50 hover:bg-slate-900 transition-all">
+                       <Card key={apt.id} className="p-4 bg-slate-900/60 border-slate-800/50 hover:bg-slate-900 transition-all flex flex-col gap-3">
+                         <div className="self-start">
+                           <Badge variant={apt.status === 'CONFIRMED' ? 'success' : 'warning'}>
+                             {apt.status === 'CONFIRMED' ? 'Confirmado' : 'Pendente'}
+                           </Badge>
+                         </div>
                          <div className="flex items-center justify-between gap-4">
-                           <div className="flex items-center gap-4">
-                             <div className="w-12 h-12 rounded-2xl bg-slate-800 flex flex-col items-center justify-center border border-slate-700">
+                           <div className="flex items-center gap-4 min-w-0">
+                             <div className="w-12 h-12 shrink-0 rounded-2xl bg-slate-800 flex flex-col items-center justify-center border border-slate-700">
                                <span className="text-xs font-black text-white">{apt.time}</span>
                              </div>
-                             <div>
-                                <div className="flex items-center gap-2">
-                                   <Link 
-                                     to={`/admin/clientes/${apt.client_id}`}
-                                     className="font-bold text-white text-lg hover:text-emerald-400 transition-colors flex items-center gap-2 group/link"
-                                   >
-                                     {apt.client_name}
-                                     <Eye size={14} className="opacity-0 group-hover/link:opacity-100 transition-opacity text-emerald-500" />
-                                   </Link>
-                                  <Badge variant={apt.status === 'CONFIRMED' ? 'success' : 'warning'}>
-                                    {apt.status === 'CONFIRMED' ? 'Confirmado' : 'Pendente'}
-                                  </Badge>
-                               </div>
+                             <div className="min-w-0">
+                                <Link 
+                                  to={`/admin/clientes/${apt.client_id}`}
+                                  className="font-bold text-white text-lg hover:text-emerald-400 transition-colors flex items-center gap-2 group/link"
+                                >
+                                  <span className="truncate">{apt.client_name}</span>
+                                  <Eye size={14} className="shrink-0 opacity-0 group-hover/link:opacity-100 transition-opacity text-emerald-500" />
+                                </Link>
                                <p className="text-slate-500 text-sm flex items-center gap-1 mt-0.5">
-                                 <Scissors size={12} /> {services.find(s => s.id === apt.service_id)?.name || 'Serviço'}
+                                 <Scissors size={12} className="shrink-0" /> <span className="truncate">{services.find(s => s.id === apt.service_id)?.name || 'Serviço'}</span>
                                </p>
                              </div>
                            </div>
                            
                            <Button 
                              onClick={() => handleCheckout(apt)}
-                             className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs tracking-widest"
+                             className="shrink-0 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs tracking-widest"
                            >
                              FINALIZAR <ChevronRight size={16} className="ml-1" />
                            </Button>

@@ -100,10 +100,12 @@ const ServicesPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Serviços</h1>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Scissors className="text-emerald-500 shrink-0" /> Serviços
+          </h1>
           <p className="text-slate-400">Gerencie o menu de serviços da sua barbearia.</p>
         </div>
         <Button onClick={handleAddService}><Plus size={18} /> Novo Serviço</Button>

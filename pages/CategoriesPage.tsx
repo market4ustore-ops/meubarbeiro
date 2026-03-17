@@ -74,10 +74,12 @@ const CategoriesPage: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Categorias de Produtos</h1>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Tag className="text-emerald-500 shrink-0" /> Categorias de Produtos
+          </h1>
           <p className="text-slate-400">Organize seu estoque de forma eficiente.</p>
         </div>
         <Button onClick={handleAddCategory}><Plus size={18} /> Nova Categoria</Button>

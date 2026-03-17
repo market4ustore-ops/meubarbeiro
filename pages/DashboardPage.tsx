@@ -196,7 +196,7 @@ const DashboardPage: React.FC = () => {
               <div className="flex-1 min-h-[300px] flex items-center justify-center">
                 {stats.chartData.some((d: any) => d.total > 0) ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={stats.chartData}>
+                    <BarChart data={stats.chartData} margin={{ bottom: 20, left: -20, right: 10 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />

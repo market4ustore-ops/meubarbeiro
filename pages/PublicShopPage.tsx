@@ -241,6 +241,15 @@ const PublicShopPage: React.FC = () => {
     return selectedServices.reduce((acc, s) => acc + s.price, 0);
   }, [selectedServices]);
 
+  const bookingFee = useMemo(() => {
+    if (!tenant || !tenant.booking_fee_enabled) return 0;
+    if (tenant.booking_fee_type === 'fixed') {
+      return tenant.booking_fee_value || 0;
+    }
+    const percentage = tenant.booking_fee_value || 0;
+    return totalBookingPrice * (percentage / 100);
+  }, [totalBookingPrice, tenant]);
+
   const totalBookingDuration = useMemo(() => {
     return selectedServices.reduce((acc, s) => acc + s.duration, 0);
   }, [selectedServices]);
@@ -378,8 +387,18 @@ const PublicShopPage: React.FC = () => {
 
     const totalVal = (isBoth || type === 'booking' ? totalBookingPrice : 0) + (isBoth || type === 'order' ? cartTotal : 0);
     lines.push(`${emojiMoney} *Total Geral:* R$ ${totalVal.toFixed(2)}`);
+    
+    if (type === 'booking' || isBoth) {
+      if (tenant.booking_fee_enabled) {
+        lines.push('');
+        const feeLabel = tenant.booking_fee_type === 'percentage' ? ` (${tenant.booking_fee_value}%)` : '';
+        lines.push(`*${emojiMoney} TAXA DE AGENDAMENTO${feeLabel}:* R$ ${bookingFee.toFixed(2)}`);
+        lines.push(`_Estou enviando o comprovante do PIX para confirmar meu horário._`);
+      }
+    }
+
     lines.push('');
-    lines.push(`_Enviado via sistema meuBarbeiro (manual)_`);
+    lines.push(`_Enviado via sistema meuBarbeiro_`);
 
     const message = lines.join('\n');
     let cleanPhone = tenant.phone.replace(/\D/g, '');
@@ -975,16 +994,38 @@ const PublicShopPage: React.FC = () => {
                       {s.name} <span>R$ {s.price.toFixed(2)}</span>
                     </p>
                   ))}
+                  {tenant?.booking_fee_enabled && (
+                    <div className="pt-2 mt-2 border-t border-slate-800/50">
+                      <p className="text-xs text-emerald-500 font-bold flex justify-between">
+                        Taxa de Agendamento {tenant.booking_fee_type === 'percentage' ? `(${tenant.booking_fee_value}%)` : ''} <span className="text-white">R$ {bookingFee.toFixed(2)}</span>
+                      </p>
+                      <p className="text-[10px] text-slate-500 italic mt-1 leading-tight">
+                        * O valor da taxa é reembolsável e necessário para garantir sua reserva.
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div className="pt-2 border-t border-slate-800 flex justify-between items-center">
                   <p className="text-sm text-slate-200">
                     {new Date(selectedDate + 'T12:00:00').toLocaleDateString('pt-BR')} às {selectedTime}
-                    <br /><span className="text-[10px] text-slate-500">{totalBookingDuration} min totais</span>
                   </p>
-                  <p className="text-lg font-black" style={{ color: primaryColor }}>R$ {totalBookingPrice.toFixed(2)}</p>
+                  <div className="text-right">
+                    <p className="text-[10px] text-slate-500 uppercase font-black">Total Serviços</p>
+                    <p className="text-lg font-black" style={{ color: primaryColor }}>R$ {totalBookingPrice.toFixed(2)}</p>
+                  </div>
                 </div>
               </Card>
-              <Button type="submit" className="w-full h-14 text-lg font-bold" isLoading={loading} style={{ backgroundColor: primaryColor }}>Finalizar Agendamento</Button>
+
+              {tenant?.booking_fee_enabled && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl flex gap-3">
+                  <AlertCircle className="text-emerald-500 shrink-0" size={18} />
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    <strong className="text-white">Confirmação via PIX:</strong> Para que seu agendamento seja confirmado, você deverá enviar o comprovante do PIX de <strong className="text-emerald-500">R$ {bookingFee.toFixed(2)}</strong> na próxima tela.
+                  </p>
+                </div>
+              )}
+
+              <Button type="submit" className="w-full h-14 text-lg font-bold" isLoading={loading} style={{ backgroundColor: primaryColor }}>Finalizar e Enviar Comprovante</Button>
             </form>
           )}
 
@@ -1008,17 +1049,38 @@ const PublicShopPage: React.FC = () => {
 
           {bookingStep === 5 && (
             <div className="text-center py-10 space-y-6 animate-in zoom-in duration-500">
-              <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 border-2" style={{ color: primaryColor, borderColor: `${primaryColor}4D` }}>
+              <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-emerald-500/30" style={{ color: primaryColor }}>
                 <CheckCircle2 size={48} />
               </div>
-              <h2 className="text-2xl font-black text-white">Agendado com Sucesso!</h2>
-              <p className="text-slate-400 text-sm">Tudo certo, <strong>{clientData.name}</strong>! Salve este horário na sua agenda.</p>
+              <h2 className="text-2xl font-black text-white">Solicitação Enviada!</h2>
+              
+              {tenant?.booking_fee_enabled ? (
+                <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4 text-left">
+                  <div className="flex items-center gap-3 text-emerald-500">
+                    <AlertCircle size={20} />
+                    <h4 className="font-bold">Ação Necessária para Confirmar</h4>
+                  </div>
+                  <p className="text-sm text-slate-300 leading-relaxed">
+                    Para que a barbearia confirme seu horário, envie agora o comprovante do PIX no valor de:
+                  </p>
+                  <div className="bg-white/5 p-4 rounded-xl text-center">
+                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Valor do PIX {tenant.booking_fee_type === 'percentage' ? `(${tenant.booking_fee_value}%)` : ''}</p>
+                    <p className="text-3xl font-black text-white">R$ {bookingFee.toFixed(2)}</p>
+                  </div>
+                  <p className="text-[10px] text-slate-500 italic text-center">
+                    Clique no botão abaixo para abrir o WhatsApp e enviar o comprovante.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-slate-400 text-sm">Tudo certo, <strong>{clientData.name}</strong>! Salve este horário na sua agenda.</p>
+              )}
+
               <div className="space-y-3 pt-4">
-                <Button className="w-full h-14 gap-2 text-white" onClick={() => handleSendWhatsApp(hasOrderedInSession ? 'both' : 'booking')} style={{ backgroundColor: primaryColor }}>
-                  <MessageCircle size={20} /> {hasOrderedInSession ? 'Enviar resumo (Serviços + Produtos)' : 'Enviar comprovante via WhatsApp'}
+                <Button className="w-full h-16 gap-3 text-white text-lg shadow-xl shadow-emerald-500/20" onClick={() => handleSendWhatsApp(hasOrderedInSession ? 'both' : 'booking')} style={{ backgroundColor: primaryColor }}>
+                  <MessageCircle size={24} /> {tenant?.booking_fee_enabled ? 'Enviar Comprovante via WhatsApp' : (hasOrderedInSession ? 'Enviar resumo (Serviços + Produtos)' : 'Avisar Barbearia via WhatsApp')}
                 </Button>
-                <Button variant="ghost" className="w-full h-12 text-slate-400 hover:text-white" onClick={() => setIsBookingModalOpen(false)}>
-                  Entendido, obrigado!
+                <Button variant="ghost" className="w-full h-12 text-slate-500 hover:text-white" onClick={() => setIsBookingModalOpen(false)}>
+                  Fazer isso mais tarde
                 </Button>
               </div>
             </div>

@@ -787,6 +787,9 @@ export interface Database {
                     trial_ends_at: string | null
                     updated_at: string | null
                     zip: string | null
+                    booking_fee_enabled: boolean | null
+                    booking_fee_type: "percentage" | "fixed" | null
+                    booking_fee_value: number | null
                 }
                 Insert: {
                     banner_url?: string | null
@@ -814,6 +817,9 @@ export interface Database {
                     trial_ends_at?: string | null
                     updated_at?: string | null
                     zip?: string | null
+                    booking_fee_enabled?: boolean | null
+                    booking_fee_type?: "percentage" | "fixed" | null
+                    booking_fee_value?: number | null
                 }
                 Update: {
                     banner_url?: string | null
@@ -841,6 +847,9 @@ export interface Database {
                     trial_ends_at?: string | null
                     updated_at?: string | null
                     zip?: string | null
+                    booking_fee_enabled?: boolean | null
+                    booking_fee_type?: "percentage" | "fixed" | null
+                    booking_fee_value?: number | null
                 }
                 Relationships: [
                     {

@@ -45,7 +45,7 @@ const AgendaPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<any | null>(null);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -478,17 +478,14 @@ const AgendaPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 md:space-y-6 animate-in fade-in duration-500 pb-10">
-      {/* Header */}
-      <div className="flex flex-col gap-4">
-        {/* Title and Desktop Status Row */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
-              <CalendarIcon className="text-emerald-500 shrink-0" /> Agenda
-            </h1>
-            <p className="text-slate-400 text-[10px] md:text-sm">Organize seus atendimentos de forma profissional.</p>
-          </div>
+    <div className="space-y-8 animate-in fade-in duration-500 pb-10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <CalendarIcon className="text-emerald-500 shrink-0" /> Agenda
+          </h1>
+          <p className="text-slate-400">Organize seus atendimentos de forma profissional.</p>
+        </div>
 
           <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-slate-900/50 rounded-2xl border border-slate-800 transition-all">
             <div className="flex flex-col text-right">
@@ -528,23 +525,22 @@ const AgendaPage: React.FC = () => {
               onClick={() => setViewMode('grid')}
               className={`flex-1 sm:flex-none p-1.5 md:p-2 rounded-lg transition-all flex items-center justify-center gap-2 text-[10px] md:text-xs font-bold ${viewMode === 'grid' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
             >
-              <LayoutGrid size={14} className="md:w-4 md:h-4" /> <span className="hidden xs:inline">Semanal</span>
+              <LayoutGrid size={14} className="md:w-4 md:h-4 shrink-0" /> <span>Grade</span>
             </Button>
             <Button
               variant={viewMode === 'list' ? 'primary' : 'ghost'}
               onClick={() => setViewMode('list')}
               className={`flex-1 sm:flex-none p-1.5 md:p-2 rounded-lg transition-all flex items-center justify-center gap-2 text-[10px] md:text-xs font-bold ${viewMode === 'list' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
             >
-              <ListIcon size={14} className="md:w-4 md:h-4" /> <span className="hidden xs:inline">Lista</span>
+              <ListIcon size={14} className="md:w-4 md:h-4 shrink-0" /> <span>Lista</span>
             </Button>
           </div>
 
           <Button onClick={() => handleOpenModal()} className="w-full sm:w-auto flex justify-center py-2 h-10 md:h-11 shadow-lg shadow-emerald-500/20">
             <Plus size={18} /> <span className="sm:hidden ml-2 font-bold text-xs">Novo</span>
           </Button>
-        </div>
       </div>
-
+    
       {/* Primary Toolbar */}
       <Card className="p-3 md:p-4 bg-slate-900/40 border-slate-800/50 backdrop-blur-sm">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center gap-3 md:gap-4">
