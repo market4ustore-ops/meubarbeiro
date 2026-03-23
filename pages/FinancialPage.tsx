@@ -11,7 +11,9 @@ import {
   Filter, 
   Download,
   Trash2,
-  AlertCircle
+  AlertCircle,
+  Package,
+  CheckCircle2
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -564,6 +566,55 @@ const FinancialPage: React.FC = () => {
                 {selectedTransaction.description || 'Nenhuma descrição informada.'}
               </p>
             </div>
+
+            {/* Itens e Serviços */}
+            {selectedTransaction.items && selectedTransaction.items.length > 0 && (
+              <div className="space-y-4">
+                {/* Serviços */}
+                {selectedTransaction.items.filter((i: any) => i.type === 'SERVICE').length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                      <CheckCircle2 size={12} className="text-emerald-500" /> Serviços Prestados
+                    </p>
+                    <div className="bg-slate-900/50 border border-slate-800/50 rounded-xl divide-y divide-slate-800/30 overflow-hidden">
+                      {selectedTransaction.items
+                        .filter((i: any) => i.type === 'SERVICE')
+                        .map((item: any, idx: number) => (
+                          <div key={idx} className="p-3 flex justify-between items-center">
+                            <div>
+                               <p className="text-sm font-bold text-white">{item.name}</p>
+                               <p className="text-[10px] text-slate-500">Quantidade: {item.quantity}</p>
+                            </div>
+                            <span className="text-sm font-black text-emerald-400">{formatCurrency(item.price * item.quantity)}</span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Produtos */}
+                {selectedTransaction.items.filter((i: any) => i.type === 'PRODUCT').length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                      <Package size={12} className="text-sky-500" /> Produtos Vendidos
+                    </p>
+                    <div className="bg-slate-900/50 border border-slate-800/50 rounded-xl divide-y divide-slate-800/30 overflow-hidden">
+                      {selectedTransaction.items
+                        .filter((i: any) => i.type === 'PRODUCT')
+                        .map((item: any, idx: number) => (
+                          <div key={idx} className="p-3 flex justify-between items-center">
+                            <div>
+                               <p className="text-sm font-bold text-white">{item.name}</p>
+                               <p className="text-[10px] text-slate-500">Quantidade: {item.quantity}</p>
+                            </div>
+                            <span className="text-sm font-black text-sky-400">{formatCurrency(item.price * item.quantity)}</span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {(selectedTransaction.clients?.name || selectedTransaction.users?.name) && (
               <div className="grid grid-cols-2 gap-4">
