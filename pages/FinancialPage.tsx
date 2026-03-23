@@ -170,6 +170,20 @@ const FinancialPage: React.FC = () => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
+  const formatDisplayDate = (dateStr: string) => {
+    if (!dateStr) return '-';
+    // Se a data vier no formato ISO YYYY-MM-DD, ao dar new Date(dateStr) 
+    // o JS entende como UTC. No Brasil (UTC-3), isso vira o dia anterior às 21h.
+    // Usamos replace para trocar '-' por '/' o que força o JS a tratar como data local em muitos browsers,
+    // ou simplesmente extraímos os campos manualmente.
+    const [year, month, day] = dateStr.includes('T') 
+      ? dateStr.split('T')[0].split('-') 
+      : dateStr.split('-');
+    
+    if (!year || !month || !day) return dateStr;
+    return `${day}/${month}/${year}`;
+  };
+
   const handleExportPDF = () => {
     if (filteredTransactions.length === 0) {
       addToast('Nenhuma transação para exportar.', 'warning');
@@ -208,7 +222,7 @@ const FinancialPage: React.FC = () => {
 
     // Transactions Table
     const tableData = filteredTransactions.map(t => [
-      new Date(t.date).toLocaleDateString('pt-BR'),
+      formatDisplayDate(t.date),
       t.description || 'Sem descrição',
       t.category,
       t.type === 'INCOME' ? 'Entrada' : 'Saída',
@@ -411,7 +425,7 @@ const FinancialPage: React.FC = () => {
                     onClick={() => handleOpenDetailModal(t)}
                   >
                     <td className="px-6 py-4 text-xs text-slate-400">
-                      {new Date(t.date).toLocaleDateString('pt-BR')}
+                      {formatDisplayDate(t.date)}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
@@ -548,10 +562,12 @@ const FinancialPage: React.FC = () => {
               <div className="space-y-1">
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Data</p>
                 <p className="text-sm text-white font-medium">
-                  {new Date(selectedTransaction.date).toLocaleDateString('pt-BR')} 
-                  <span className="text-slate-500 ml-2">
-                    {new Date(selectedTransaction.created_at || selectedTransaction.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
+                  {formatDisplayDate(selectedTransaction.date)} 
+                  {selectedTransaction.created_at && (
+                    <span className="text-slate-500 ml-2">
+                       {new Date(selectedTransaction.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
                 </p>
               </div>
               <div className="space-y-1">
