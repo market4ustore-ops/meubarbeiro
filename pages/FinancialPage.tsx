@@ -53,6 +53,10 @@ const FinancialPage: React.FC = () => {
     status: 'PAID'
   });
 
+  // Transaction Detail Modal State
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
+
   const calculateDates = () => {
     const now = new Date();
     let start = '';
@@ -148,6 +152,11 @@ const FinancialPage: React.FC = () => {
     } finally {
       setIsDeleting(null);
     }
+  };
+
+  const handleOpenDetailModal = (transaction: any) => {
+    setSelectedTransaction(transaction);
+    setIsDetailModalOpen(true);
   };
 
   const filteredTransactions = transactions.filter(t => 
@@ -394,7 +403,11 @@ const FinancialPage: React.FC = () => {
                 </tr>
               ) : (
                 filteredTransactions.map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-800/30 transition-colors group">
+                  <tr 
+                    key={t.id} 
+                    className="hover:bg-slate-800/30 transition-colors group cursor-pointer"
+                    onClick={() => handleOpenDetailModal(t)}
+                  >
                     <td className="px-6 py-4 text-xs text-slate-400">
                       {new Date(t.date).toLocaleDateString('pt-BR')}
                     </td>
@@ -416,15 +429,31 @@ const FinancialPage: React.FC = () => {
                       {t.commission_amount > 0 ? formatCurrency(t.commission_amount) : '-'}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-slate-600 hover:text-rose-500 p-1.5"
-                        onClick={() => handleDelete(t.id)}
-                        disabled={isDeleting === t.id}
-                      >
-                        <Trash2 size={16} className={isDeleting === t.id ? 'animate-pulse' : ''} />
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-slate-600 hover:text-emerald-500 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenDetailModal(t);
+                          }}
+                        >
+                          <Search size={16} />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-slate-600 hover:text-rose-500 p-1.5"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(t.id);
+                          }}
+                          disabled={isDeleting === t.id}
+                        >
+                          <Trash2 size={16} className={isDeleting === t.id ? 'animate-pulse' : ''} />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -489,6 +518,88 @@ const FinancialPage: React.FC = () => {
             <Button className="flex-1" type="submit" isLoading={formLoading}>Registrar Despesa</Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Transaction Details Modal */}
+      <Modal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        title="Detalhes da Transação"
+      >
+        {selectedTransaction && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-start border-b border-slate-800 pb-4">
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">
+                  {selectedTransaction.type === 'INCOME' ? 'Entrada' : 'Saída'}
+                </p>
+                <h3 className={`text-2xl font-black ${selectedTransaction.type === 'INCOME' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                  {selectedTransaction.type === 'INCOME' ? '+' : '-'} {formatCurrency(selectedTransaction.amount)}
+                </h3>
+              </div>
+              <Badge variant={selectedTransaction.type === 'INCOME' ? 'success' : 'danger'}>
+                {selectedTransaction.category}
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Data</p>
+                <p className="text-sm text-white font-medium">
+                  {new Date(selectedTransaction.date).toLocaleDateString('pt-BR')} 
+                  <span className="text-slate-500 ml-2">
+                    {new Date(selectedTransaction.created_at || selectedTransaction.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Status</p>
+                <Badge variant="success">PAGO</Badge>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Descrição</p>
+              <p className="text-sm text-white bg-slate-950/50 p-3 rounded-lg border border-slate-800/50 italic">
+                {selectedTransaction.description || 'Nenhuma descrição informada.'}
+              </p>
+            </div>
+
+            {(selectedTransaction.clients?.name || selectedTransaction.users?.name) && (
+              <div className="grid grid-cols-2 gap-4">
+                {selectedTransaction.clients?.name && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Cliente</p>
+                    <p className="text-sm text-white font-medium">{selectedTransaction.clients.name}</p>
+                  </div>
+                )}
+                {selectedTransaction.users?.name && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Profissional / Responsável</p>
+                    <p className="text-sm text-white font-medium">{selectedTransaction.users.name}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {selectedTransaction.commission_amount > 0 && (
+              <div className="bg-amber-500/5 border border-amber-500/10 p-4 rounded-xl">
+                <div className="flex justify-between items-center text-amber-500">
+                  <span className="text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                    <PieChart size={14} /> Comissão do Profissional
+                  </span>
+                  <span className="text-lg font-black">{formatCurrency(selectedTransaction.commission_amount)}</span>
+                </div>
+              </div>
+            )}
+
+            <div className="pt-4 flex justify-end">
+              <Button onClick={() => setIsDetailModalOpen(false)} className="bg-slate-800 text-white hover:bg-slate-700">
+                Fechar
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
