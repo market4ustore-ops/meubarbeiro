@@ -16,7 +16,7 @@ export async function getTenantBySlug(slug: string) {
         .from('tenants')
         .select('*')
         .eq('slug', slug)
-        .single()
+        .maybeSingle()
 
     if (error) throw error
     return data

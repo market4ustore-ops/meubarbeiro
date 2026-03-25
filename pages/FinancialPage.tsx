@@ -200,7 +200,7 @@ const FinancialPage: React.FC = () => {
     
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`Período: ${new Date(start).toLocaleDateString('pt-BR')} a ${new Date(end).toLocaleDateString('pt-BR')}`, 14, 30);
+    doc.text(`Período: ${new Date(`${start}T12:00:00`).toLocaleDateString('pt-BR')} a ${new Date(`${end}T12:00:00`).toLocaleDateString('pt-BR')}`, 14, 30);
     doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 35);
 
     // Stats Grid (Simulation of the dashboard cards)

@@ -289,7 +289,7 @@ const ClientDetailPage: React.FC = () => {
                             <div className="space-y-1">
                                <div className="flex items-center gap-2">
                                   <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                    {new Date(item.date).toLocaleDateString('pt-BR')} {item.time && `• ${item.time}`}
+                                    {new Date(`${item.date}T12:00:00`).toLocaleDateString('pt-BR')} {item.time && `• ${item.time}`}
                                   </span>
                                </div>
                                <h4 className="font-bold text-white group-hover:text-emerald-400 transition-colors uppercase tracking-tight">{item.title}</h4>

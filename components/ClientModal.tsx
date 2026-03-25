@@ -239,7 +239,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                         >
                           {apt.status}
                         </Badge>
-                        <span className="text-sm font-bold text-white">{new Date(apt.date).toLocaleDateString('pt-BR')} às {apt.time}</span>
+                        <span className="text-sm font-bold text-white">{new Date(`${apt.date}T12:00:00`).toLocaleDateString('pt-BR')} às {apt.time}</span>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-xs text-slate-400">

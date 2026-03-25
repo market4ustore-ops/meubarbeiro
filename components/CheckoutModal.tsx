@@ -226,6 +226,33 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       return;
     }
 
+    // Verificação de finalização antecipada
+    if (appointment?.id && appointment.date && appointment.time) {
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+      
+      if (appointment.date === todayStr) {
+        const [apptsHours, apptsMins] = appointment.time.split(':').map(Number);
+        const apptTime = new Date();
+        apptTime.setHours(apptsHours, apptsMins, 0, 0);
+
+        if (now < apptTime) {
+          const confirmEarly = window.confirm(
+            `Este agendamento está marcado para às ${appointment.time}. 
+Deseja finalizar agora e liberar este horário na agenda?`
+          );
+          if (!confirmEarly) return;
+        }
+      } else if (appointment.date > todayStr) {
+        // Se for um agendamento futuro em outro dia
+        const confirmFuture = window.confirm(
+          `Este agendamento é para o dia ${new Date(`${appointment.date}T12:00:00`).toLocaleDateString('pt-BR')}. 
+Deseja finalizar agora e liberar a agenda para esse dia?`
+        );
+        if (!confirmFuture) return;
+      }
+    }
+
     setLoading(true);
     try {
       // Calculate Commission

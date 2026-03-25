@@ -10,7 +10,6 @@ import {
   LayoutGrid,
   List as ListIcon,
   Eye,
-  Zap,
   LayoutGrid as LayoutGridIcon,
   CheckCircle2,
   XCircle,
@@ -28,10 +27,11 @@ import { Card, Button, Input, Badge, Modal, EmptyState } from '../components/UI'
 import { ClientSelect } from '../components/ClientSelect';
 import { ClientModal } from '../components/ClientModal';
 import { CheckoutModal } from '../components/CheckoutModal';
+import { EditAppointmentModal } from '../components/EditAppointmentModal';
 import { AppointmentStatus, AppointmentStatusLabels, Client } from '../types';
 import { useToast } from '../context/ToastContext';
 import { useNotifications } from '../context/NotificationContext';
-import { supabase, getOpeningHoursByTenant, getAppointmentsByDate, processSale } from '../lib/supabase'; // Added processSale
+import { supabase, processSale } from '../lib/supabase'; // Added processSale
 import { useAuth } from '../context/AuthContext';
 
 const AgendaPage: React.FC = () => {
@@ -52,15 +52,7 @@ const AgendaPage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterBarber, setFilterBarber] = useState('all');
 
-  // Smart Scheduling State
-  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
-  const [slotLoading, setSlotLoading] = useState(false);
-  const [formDate, setFormDate] = useState('');
-  const [formBarber, setFormBarber] = useState('');
-  const [formServiceId, setFormServiceId] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string>('');
-  const [clientName, setClientName] = useState('');
-  const [clientPhone, setClientPhone] = useState('');
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [savingClient, setSavingClient] = useState(false);
   
@@ -124,51 +116,6 @@ const AgendaPage: React.FC = () => {
     }
   };
 
-  const handleQuickCheckout = async (apt: any) => {
-    if (!profile?.tenant_id) return;
-    if (!confirm(`Finalizar atendimento de ${apt.client_name} agora? (Pagamento via PIX)`)) return;
-
-    setLoading(true);
-    try {
-      const service = services.find(s => s.id === apt.service_id);
-      const barber = barbers.find(b => b.id === apt.barber_id);
-      const servicePrice = service?.price || 0;
-      const commissionAmount = barber?.commission_rate ? (servicePrice * barber.commission_rate) / 100 : 0;
-
-      await processSale({
-        transaction: {
-          tenant_id: profile.tenant_id,
-          type: 'INCOME',
-          category: 'Finalização Rápida',
-          amount: servicePrice,
-          description: `Checkout Rápido - ${service?.name || 'Serviço'}`,
-          date: new Date().toISOString().split('T')[0],
-          status: 'PAID',
-          client_id: apt.client_id || null,
-          barber_id: apt.barber_id,
-          appointment_id: apt.id,
-          payment_method: 'PIX',
-          items: [{
-            type: 'SERVICE',
-            id: apt.service_id,
-            name: service?.name || 'Serviço',
-            price: servicePrice,
-            quantity: 1
-          }],
-          commission_amount: commissionAmount
-        },
-        appointmentId: apt.id,
-        inventoryItems: []
-      });
-
-      addToast('Atendimento finalizado com sucesso!', 'success');
-      fetchAgendaData();
-    } catch (err: any) {
-      addToast('Erro ao finalizar rápido: ' + err.message, 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     fetchAgendaData();
@@ -213,166 +160,9 @@ const AgendaPage: React.FC = () => {
     }
   }, [profile]);
 
-  // Calculate Available Slots
-  useEffect(() => {
-    const calculateSlots = async () => {
-      if (!profile?.tenant_id || !formDate) return;
-
-      setSlotLoading(true);
-      try {
-        const [hours, existingApts] = await Promise.all([
-          getOpeningHoursByTenant(profile.tenant_id),
-          getAppointmentsByDate(profile.tenant_id, formDate)
-        ]);
-
-        if (!hours || hours.length === 0) {
-          setAvailableSlots([]);
-          return;
-        }
-
-        const dateObj = new Date(formDate + 'T12:00:00');
-        const daysOfWeek = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-        const dayName = daysOfWeek[dateObj.getDay()];
-
-        const todayHours = hours.find((h: any) => h.day === dayName);
-
-        if (!todayHours || !todayHours.is_open || !todayHours.open_time || !todayHours.close_time) {
-          setAvailableSlots([]); // Closed
-          return;
-        }
-
-        const timeToMinutes = (t: string) => {
-          const [h, m] = t.split(':').map(Number);
-          return h * 60 + m;
-        };
-
-        const startMins = timeToMinutes(todayHours.open_time);
-        const endMins = timeToMinutes(todayHours.close_time);
-
-        // Default duration (can be refined if service is selected)
-        const selectedSvc = services.find(s => s.id === formServiceId);
-        const duration = selectedSvc?.duration || 30;
-
-        const slots: string[] = [];
-        // Generate 30 min slots
-        for (let m = startMins; m <= endMins - duration; m += 30) {
-          const hour = Math.floor(m / 60);
-          const min = m % 60;
-          const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
-
-          // Check collision
-          const hasCollision = existingApts?.some((apt: any) => {
-            // Ignore self if editing
-            if (editingAppointment && apt.id === editingAppointment.id) return false;
-
-            // Filter by barber if selected (otherwise check only global if resource constrained? assuming barber specific)
-            if (formBarber && apt.barber_id !== formBarber) return false;
-
-            const aptStart = timeToMinutes(apt.time);
-            const aptEnd = aptStart + (apt.total_duration || 30);
-
-            // Collision logic: SlotStart < AptEnd AND SlotEnd > AptStart
-            return (m < aptEnd && (m + duration) > aptStart);
-          });
-
-          if (!hasCollision) {
-            slots.push(timeStr);
-          }
-        }
-        setAvailableSlots(slots);
-
-      } catch (err) {
-        console.error("Error calculating slots", err);
-      } finally {
-        setSlotLoading(false);
-      }
-    };
-
-    calculateSlots();
-  }, [formDate, formBarber, formServiceId, editingAppointment, profile?.tenant_id, services]);
-
   const handleOpenModal = (apt?: any) => {
     setEditingAppointment(apt || null);
-
-    // Initialize form state
-    if (apt) {
-      setFormDate(apt.date);
-      setFormBarber(apt.barber_id || '');
-      setFormServiceId(apt.service_id || '');
-      setSelectedClientId(apt.client_id || '');
-      setClientName(apt.client_name || '');
-      setClientPhone(apt.client_phone || '');
-    } else {
-      setFormDate(selectedDate); // Default to current view date
-      setFormBarber(profile?.role === 'BARBER' ? profile.id : '');
-      setFormServiceId(services[0]?.id || '');
-      setSelectedClientId('');
-      setClientName('');
-      setClientPhone('');
-    }
-
     setIsModalOpen(true);
-  };
-
-  const [isSaving, setIsSaving] = useState(false);
-
-  const handleSaveAppointment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!profile?.tenant_id || isSaving) return;
-
-    setIsSaving(true);
-    const formData = new FormData(e.currentTarget as HTMLFormElement);
-    const serviceId = formData.get('serviceId') as string;
-    const selectedSvc = services.find(s => s.id === serviceId);
-
-    const appointmentData = {
-      client_id: selectedClientId || null,
-      client_name: clientName,
-      client_phone: clientPhone,
-      service_id: serviceId,
-      service_ids: [serviceId],
-      total_duration: Number(selectedSvc?.duration) || 30,
-      barber_id: (formData.get('barberId') as string) || null,
-      date: formData.get('date') as string,
-      time: formData.get('time') as string,
-      status: (formData.get('status') as AppointmentStatus) || AppointmentStatus.PENDING,
-      notes: formData.get('notes') as string,
-    };
-
-    try {
-      // Validation
-      if (!clientName && !selectedClientId) {
-        addToast('Por favor, selecione ou cadastre um cliente.', 'error');
-        setIsSaving(false);
-        return;
-      }
-
-      if (editingAppointment) {
-        const { error } = await supabase
-          .from('appointments')
-          .update(appointmentData as any)
-          .eq('id', editingAppointment.id);
-
-        if (error) throw error;
-        addToast('Agendamento atualizado!', 'success');
-      } else {
-        const { error } = await supabase
-          .from('appointments')
-          .insert({ ...appointmentData, tenant_id: profile.tenant_id } as any);
-
-        if (error) throw error;
-        addToast('Novo agendamento criado!', 'success');
-      }
-      
-      // Close modal and refresh data (as fallback to Realtime)
-      setIsModalOpen(false);
-      await fetchAgendaData();
-    } catch (err: any) {
-      console.error('Error saving appointment:', err);
-      addToast('Erro ao salvar agendamento: ' + (err.message || ''), 'error');
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   const handleUpdateStatus = async (id: string, status: AppointmentStatus) => {
@@ -627,15 +417,6 @@ const AgendaPage: React.FC = () => {
                           >
                             {apt.client_name}
                           </h6>
-                          {apt.status !== 'COMPLETED' && (
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); handleQuickCheckout(apt); }}
-                              className="p-1 text-slate-600 hover:text-emerald-500 transition-colors"
-                              title="Finalização Rápida (1-clique)"
-                            >
-                              <Zap size={10} fill="currentColor" />
-                            </button>
-                          )}
                         </div>
                       </div>
                     ))}
@@ -685,7 +466,7 @@ const AgendaPage: React.FC = () => {
                         )}
                       </h4>
                       <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mt-1">
-                        <span className="flex items-center gap-1 font-bold"><CalendarIcon size={12} /> {new Date(apt.date).toLocaleDateString('pt-BR')}</span>
+                        <span className="flex items-center gap-1 font-bold"><CalendarIcon size={12} /> {new Date(`${apt.date}T12:00:00`).toLocaleDateString('pt-BR')}</span>
                         <span className="flex items-center gap-1 font-bold"><Clock size={12} /> {apt.time} ({apt.total_duration}m)</span>
                         <span className="flex items-center gap-1"><UserIcon size={12} /> {barbers.find(b => b.id === apt.barber_id)?.name.split(' ')[0]}</span>
                       </div>
@@ -709,15 +490,6 @@ const AgendaPage: React.FC = () => {
                             >
                               FINALIZAR
                             </Button>
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              className="bg-slate-800 hover:bg-emerald-500/20 text-emerald-500 h-8 px-2"
-                              onClick={() => handleQuickCheckout(apt)}
-                              title="Checkout 1-Clique"
-                            >
-                              <Zap size={14} fill="currentColor" />
-                            </Button>
                           </div>
                         )}
                         <Button variant="ghost" className="p-2 bg-slate-800/50 hover:bg-emerald-500/10" onClick={() => handleOpenModal(apt)}><Edit size={16} /></Button>
@@ -730,108 +502,14 @@ const AgendaPage: React.FC = () => {
         )}
       </div>
 
-      {/* Modal Form */}
-      <Modal
+      <EditAppointmentModal 
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingAppointment ? "Editar Atendimento" : "Novo Agendamento"}
-        maxWidth="max-w-xl"
-      >
-        <form onSubmit={handleSaveAppointment} className="space-y-6">
-          <ClientSelect
-            tenantId={profile?.tenant_id || ''}
-            selectedClientId={selectedClientId}
-            onSelect={(client) => {
-              setSelectedClientId(client.id);
-              setClientName(client.name);
-              setClientPhone(client.phone);
-            }}
-            onNewClient={() => setIsClientModalOpen(true)}
-          />
-
-          {/* Hidden inputs to maintain FormData compatibility if needed, though we use state now */}
-          <input type="hidden" name="clientName" value={clientName} />
-          <input type="hidden" name="clientPhone" value={clientPhone} />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Serviço Principal</label>
-              <select
-                name="serviceId"
-                className="w-full h-11 bg-slate-900 border border-slate-800 rounded-xl px-4 text-slate-100 font-medium outline-none focus:ring-2 focus:ring-emerald-500/50"
-                value={formServiceId}
-                onChange={(e) => setFormServiceId(e.target.value)}
-              >
-                {services.map(s => <option key={s.id} value={s.id}>{s.name} ({s.duration}min) - R$ {s.price.toFixed(2)}</option>)}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Barbeiro</label>
-              <select
-                name="barberId"
-                className="w-full h-11 bg-slate-900 border border-slate-800 rounded-xl px-4 text-slate-100 font-medium outline-none focus:ring-2 focus:ring-emerald-500/50"
-                value={formBarber}
-                onChange={(e) => setFormBarber(e.target.value)}
-              >
-                <option value="">Qualquer um</option>
-                {barbers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Input
-              name="date"
-              type="date"
-              label="Data"
-              value={formDate}
-              onChange={(e) => setFormDate(e.target.value)}
-              required
-            />
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">
-                Hora {slotLoading && <span className="text-emerald-500 animate-pulse ml-2">Calculando...</span>}
-              </label>
-              <select
-                name="time"
-                className="w-full h-11 bg-slate-900 border border-slate-800 rounded-xl px-4 text-slate-100 font-medium outline-none focus:ring-2 focus:ring-emerald-500/50 disabled:opacity-50"
-                defaultValue={editingAppointment?.time}
-                required
-              >
-                {editingAppointment && !availableSlots.includes(editingAppointment.time) && (
-                  <option value={editingAppointment.time}>{editingAppointment.time} (Atual)</option>
-                )}
-                {availableSlots.length > 0 ? (
-                  availableSlots.map(time => (
-                    <option key={time} value={time}>{time}</option>
-                  ))
-                ) : (
-                  <option value="" disabled>Sem horários</option>
-                )}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Status</label>
-              <select name="status" className="w-full h-11 bg-slate-900 border border-slate-800 rounded-xl px-4 text-slate-100 font-medium outline-none focus:ring-2 focus:ring-emerald-500/50" defaultValue={editingAppointment?.status || AppointmentStatus.PENDING}>
-                <option value="PENDING">Pendente</option>
-                <option value="CONFIRMED">Confirmado</option>
-                <option value="COMPLETED">Concluído</option>
-                <option value="CANCELLED">Cancelado</option>
-              </select>
-            </div>
-          </div>
-
-          <Input name="notes" label="Observações Privadas" defaultValue={editingAppointment?.notes} placeholder="Ex: Gosta de café, corte degradê baixo..." />
-
-          <div className="pt-6 flex gap-3">
-            <Button variant="secondary" className="flex-1 h-12" type="button" onClick={() => setIsModalOpen(false)} disabled={isSaving}>Cancelar</Button>
-            <Button className="flex-[2] h-12 font-bold" type="submit" isLoading={isSaving}>
-              {editingAppointment ? 'Atualizar' : 'Salvar'} Agendamento
-            </Button>
-          </div>
-        </form>
-      </Modal>
+        appointment={editingAppointment}
+        services={services}
+        barbers={barbers}
+        onSave={fetchAgendaData}
+      />
 
       <ClientModal 
         isOpen={isClientModalOpen}

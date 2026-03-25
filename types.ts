@@ -99,6 +99,7 @@ export interface Appointment {
   time: string;
   status: AppointmentStatus;
   notes?: string;
+  items?: CheckoutItem[];
 }
 
 export interface AppNotification {

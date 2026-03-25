@@ -141,6 +141,11 @@ const PublicShopPage: React.FC = () => {
     try {
       setPageLoading(true);
       const tenantData = await getTenantBySlug(slug!);
+      
+      if (!tenantData) {
+        throw new Error('Barbearia não encontrada. Verifique o link e tente novamente.');
+      }
+
       setTenant(tenantData);
 
       const [servicesData, productsData, hoursData, barbersData, schedulesData, barberServicesData] = await Promise.all([
@@ -538,6 +543,9 @@ const PublicShopPage: React.FC = () => {
 
       // 2. Colisão
       const hasCollision = existingAppointments.some(apt => {
+        // Ignora agendamentos finalizados ou cancelados para liberar o horário
+        if (apt.status === 'CANCELLED' || apt.status === 'COMPLETED') return false;
+
         const aptStart = timeToMinutes(apt.time);
         const aptEnd = aptStart + (apt.total_duration || 30);
         return (m < aptEnd && (m + durationNeeded) > aptStart);
@@ -1052,32 +1060,32 @@ const PublicShopPage: React.FC = () => {
               <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-emerald-500/30" style={{ color: primaryColor }}>
                 <CheckCircle2 size={48} />
               </div>
-              <h2 className="text-2xl font-black text-white">Solicitação Enviada!</h2>
+              <h2 className="text-2xl font-black text-white">Confirmação Pendente!</h2>
               
-              {tenant?.booking_fee_enabled ? (
-                <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4 text-left">
-                  <div className="flex items-center gap-3 text-emerald-500">
-                    <AlertCircle size={20} />
-                    <h4 className="font-bold">Ação Necessária para Confirmar</h4>
-                  </div>
-                  <p className="text-sm text-slate-300 leading-relaxed">
-                    Para que a barbearia confirme seu horário, envie agora o comprovante do PIX no valor de:
-                  </p>
-                  <div className="bg-white/5 p-4 rounded-xl text-center">
+              <div className="bg-amber-500/10 border border-amber-500/20 p-6 rounded-2xl space-y-4 text-left">
+                <div className="flex items-center gap-3 text-amber-500">
+                  <AlertCircle size={24} />
+                  <h4 className="font-bold text-lg">Ação Obrigatória</h4>
+                </div>
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  Para que a barbearia <strong className="text-white">garanta seu horário</strong>, você deve enviar o resumo agora pelo WhatsApp. Agendamentos sem confirmação serão desconsiderados.
+                </p>
+                {tenant?.booking_fee_enabled && (
+                  <div className="bg-white/5 p-4 rounded-xl text-center border border-emerald-500/20">
                     <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Valor do PIX {tenant.booking_fee_type === 'percentage' ? `(${tenant.booking_fee_value}%)` : ''}</p>
                     <p className="text-3xl font-black text-white">R$ {bookingFee.toFixed(2)}</p>
+                    <p className="text-[10px] text-emerald-500 mt-1 font-bold">Enviar Comprovante de Reserva</p>
                   </div>
-                  <p className="text-[10px] text-slate-500 italic text-center">
-                    Clique no botão abaixo para abrir o WhatsApp e enviar o comprovante.
-                  </p>
-                </div>
-              ) : (
-                <p className="text-slate-400 text-sm">Tudo certo, <strong>{clientData.name}</strong>! Salve este horário na sua agenda.</p>
+                )}
+              </div>
+
+              {!tenant?.booking_fee_enabled && (
+                <p className="text-slate-400 text-sm">Tudo certo, <strong>{clientData.name}</strong>! Mas lembre-se: o horário só é reservado após o envio da mensagem abaixo.</p>
               )}
 
               <div className="space-y-3 pt-4">
-                <Button className="w-full h-16 gap-3 text-white text-lg shadow-xl shadow-emerald-500/20" onClick={() => handleSendWhatsApp(hasOrderedInSession ? 'both' : 'booking')} style={{ backgroundColor: primaryColor }}>
-                  <MessageCircle size={24} /> {tenant?.booking_fee_enabled ? 'Enviar Comprovante via WhatsApp' : (hasOrderedInSession ? 'Enviar resumo (Serviços + Produtos)' : 'Avisar Barbearia via WhatsApp')}
+                <Button className="w-full h-16 gap-3 text-white text-lg font-black shadow-xl shadow-emerald-500/20" onClick={() => handleSendWhatsApp(hasOrderedInSession ? 'both' : 'booking')} style={{ backgroundColor: primaryColor }}>
+                  <MessageCircle size={24} /> CONFIRMAR VIA WHATSAPP
                 </Button>
                 <Button variant="ghost" className="w-full h-12 text-slate-500 hover:text-white" onClick={() => setIsBookingModalOpen(false)}>
                   Fazer isso mais tarde
@@ -1352,11 +1360,19 @@ const PublicShopPage: React.FC = () => {
               <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 border-2" style={{ color: primaryColor, borderColor: `${primaryColor}4D` }}>
                 <ShoppingBag size={48} />
               </div>
-              <h2 className="text-2xl font-black text-white">Pedido Recebido!</h2>
-              <p className="text-slate-400 text-sm">Olá <strong>{clientData.name}</strong>, separamos seus produtos. Você pode retirá-los em sua próxima visita!</p>
+              <h2 className="text-2xl font-black text-white">Aguardando Confirmação!</h2>
+              <div className="bg-amber-500/10 border border-amber-500/20 p-6 rounded-2xl space-y-4 text-left">
+                <div className="flex items-center gap-3 text-amber-500">
+                  <ShoppingBag size={24} />
+                  <h4 className="font-bold text-lg">Quase lá!</h4>
+                </div>
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  Olá <strong>{clientData.name}</strong>, recebemos seu pedido. Para que possamos separar e reservar seus produtos, <strong className="text-white">você deve confirmar via WhatsApp</strong> agora mesmo.
+                </p>
+              </div>
               <div className="space-y-3 pt-4">
-                <Button className="w-full h-14 gap-2 text-white" onClick={() => handleSendWhatsApp(hasBookedInSession ? 'both' : 'order')} style={{ backgroundColor: primaryColor }}>
-                  <MessageCircle size={20} /> {hasBookedInSession ? 'Enviar resumo (Serviços + Produtos)' : 'Enviar resumo via WhatsApp'}
+                <Button className="w-full h-16 gap-3 text-white text-lg font-black shadow-xl shadow-emerald-500/20" onClick={() => handleSendWhatsApp(hasBookedInSession ? 'both' : 'order')} style={{ backgroundColor: primaryColor }}>
+                  <MessageCircle size={24} /> CONFIRMAR PEDIDO NO WHATSAPP
                 </Button>
                 <Button variant="ghost" className="w-full h-12 text-slate-400 hover:text-white" onClick={() => setIsCatalogModalOpen(false)}>
                   Ótimo!
