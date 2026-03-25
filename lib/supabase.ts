@@ -12,13 +12,24 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
 
 // Helper para obter tenant por slug (público)
 export async function getTenantBySlug(slug: string) {
+    const cleanSlug = slug.trim();
+    console.log('[Supabase] Buscando tenant por slug:', cleanSlug);
+    
     const { data, error } = await supabase
         .from('tenants')
         .select('*')
-        .eq('slug', slug)
+        .eq('slug', cleanSlug)
         .maybeSingle()
 
-    if (error) throw error
+    if (error) {
+        console.error('[Supabase] Erro ao buscar tenant:', error);
+        throw error;
+    }
+    
+    if (!data) {
+        console.warn('[Supabase] Nenhum tenant encontrado para o slug:', cleanSlug);
+    }
+
     return data
 }
 

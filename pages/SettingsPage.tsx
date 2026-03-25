@@ -669,10 +669,10 @@ const SettingsPage: React.FC = () => {
                   Clientes podem acessar seus serviços e agendar através do link público.
                 </p>
                 <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 mb-4 flex items-center justify-between gap-2 overflow-hidden">
-                  <span className="text-xs text-slate-500 truncate">meubarbeiro.com/shop/{settings.slug}</span>
+                  <span className="text-xs text-slate-500 truncate">meubarbeiro.com/#/shop/{settings.slug}</span>
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(`meubarbeiro.com/shop/${settings.slug}`);
+                      navigator.clipboard.writeText(`${window.location.origin}/#/shop/${settings.slug}`);
                       addToast('Link copiado!', 'info');
                     }}
                     className="text-[10px] font-bold text-emerald-500 uppercase shrink-0 hover:text-emerald-400"
