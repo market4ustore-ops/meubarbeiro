@@ -130,7 +130,8 @@ const ClientDetailPage: React.FC = () => {
       // Calculate Stats
       const totalSpent = (transactions || []).reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
       const visitsCount = (appts || []).filter(a => a.status === 'COMPLETED').length;
-      const avgTicket = visitsCount > 0 ? totalSpent / visitsCount : totalSpent;
+      const transactionsCount = (transactions || []).length;
+      const avgTicket = transactionsCount > 0 ? totalSpent / transactionsCount : 0;
       const lastVisit = appts?.find(a => a.status === 'COMPLETED')?.date || '';
 
       setClient(clientData);

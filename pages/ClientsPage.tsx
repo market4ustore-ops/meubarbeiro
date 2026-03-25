@@ -78,8 +78,9 @@ const ClientsPage: React.FC = () => {
           .eq('tenant_id', profile.tenant_id);
         
         const financialData = (financialDataRaw || []) as any[];
-        const totalRevenue = financialData.reduce((acc, curr) => acc + (curr.type === 'REVENUE' || curr.type === 'INCOME' ? curr.amount : 0), 0);
-        const avgTicket = mappedClients.length > 0 ? totalRevenue / mappedClients.length : 0;
+        const incomeTransactions = financialData.filter(t => t.type === 'REVENUE' || t.type === 'INCOME');
+        const totalRevenue = incomeTransactions.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+        const avgTicket = incomeTransactions.length > 0 ? totalRevenue / incomeTransactions.length : 0;
         
         setStats({
           total: mappedClients.length,
