@@ -248,6 +248,17 @@ const Layout: React.FC<{ role: string, identifier: string, children: React.React
   // Show warning if expiring soon, or if in a trial, or blocked/read-only
   const showWarningBanner = isTrial || isTrialExpired || isExpiringSoon || isReadOnly || isAccessBlocked;
 
+  useEffect(() => {
+    if (isSidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isSidebarOpen]);
+
   if (isAccessBlocked && location.pathname !== '/admin/assinatura' && role !== 'SUPER_ADMIN') {
     return <Navigate to="/admin/assinatura" replace />;
   }
