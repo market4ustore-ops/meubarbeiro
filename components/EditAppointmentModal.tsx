@@ -151,8 +151,16 @@ export const EditAppointmentModal: React.FC<EditAppointmentModalProps> = ({
         const endMins = timeToMinutes(todayHours.close_time);
         const duration = 30;
 
+        const now = new Date();
+        // Ajuste de fuso horário local para o ISOString bater com o 'date' do input (YYYY-MM-DD):
+        const isToday = date === new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+        const currentMins = now.getHours() * 60 + now.getMinutes();
+
         const slots: string[] = [];
         for (let m = startMins; m <= endMins - duration; m += 30) {
+          if (isToday && m <= currentMins) {
+            continue;
+          }
           const hour = Math.floor(m / 60);
           const min = m % 60;
           const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
