@@ -417,9 +417,8 @@ export async function getFinancialStats(tenantId: string, startDate?: string, en
     
     const netProfit = grossRevenue - totalExpenses - totalCommissions;
     
-    // Unique clients in income
-    const uniqueClients = new Set(incomes.map(t => t.client_id).filter(Boolean));
-    const averageTicket = uniqueClients.size > 0 ? grossRevenue / uniqueClients.size : 0;
+    // Ticket Médio = Faturamento Total / Número de Vendas
+    const averageTicket = incomes.length > 0 ? grossRevenue / incomes.length : 0;
 
     return {
         grossRevenue,
