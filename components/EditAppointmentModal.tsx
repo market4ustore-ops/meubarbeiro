@@ -53,6 +53,8 @@ export const EditAppointmentModal: React.FC<EditAppointmentModalProps> = ({
   // Slots State
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [slotLoading, setSlotLoading] = useState(false);
+  const [isClosedDay, setIsClosedDay] = useState(false);
+  const [openingHours, setOpeningHours] = useState<any[]>([]);
 
   // Initialize from appointment
   useEffect(() => {
@@ -106,11 +108,20 @@ export const EditAppointmentModal: React.FC<EditAppointmentModalProps> = ({
   // Calculate Available Slots
   useEffect(() => {
     const calculateSlots = async () => {
-      if (!profile?.tenant_id || !date) return;
+      if (!profile?.tenant_id || !date) {
+        setAvailableSlots([]);
+        return;
+      }
 
       setSlotLoading(true);
       try {
-        const { data: hours } = await supabase.from('opening_hours').select('*').eq('tenant_id', profile.tenant_id);
+        let hours = openingHours;
+        if (hours.length === 0) {
+          const { data } = await supabase.from('opening_hours').select('*').eq('tenant_id', profile.tenant_id);
+          hours = data || [];
+          setOpeningHours(hours);
+        }
+
         const { data: existingApts } = await supabase.from('appointments').select('*').eq('tenant_id', profile.tenant_id).eq('date', date);
 
         if (!hours || hours.length === 0) {
@@ -124,9 +135,12 @@ export const EditAppointmentModal: React.FC<EditAppointmentModalProps> = ({
         const todayHours = hours.find((h: any) => h.day === dayName);
 
         if (!todayHours || !todayHours.is_open || !todayHours.open_time || !todayHours.close_time) {
+          setIsClosedDay(true);
           setAvailableSlots([]);
           return;
         }
+
+        setIsClosedDay(false);
 
         const timeToMinutes = (t: string) => {
           const [h, m] = t.split(':').map(Number);
@@ -135,7 +149,7 @@ export const EditAppointmentModal: React.FC<EditAppointmentModalProps> = ({
 
         const startMins = timeToMinutes(todayHours.open_time);
         const endMins = timeToMinutes(todayHours.close_time);
-        const duration = 30; // Default or calculated from items
+        const duration = 30;
 
         const slots: string[] = [];
         for (let m = startMins; m <= endMins - duration; m += 30) {
@@ -146,9 +160,8 @@ export const EditAppointmentModal: React.FC<EditAppointmentModalProps> = ({
           const hasCollision = existingApts?.some((apt: any) => {
             if (appointment && apt.id === appointment.id) return false;
             if (barberId && apt.barber_id !== barberId) return false;
-            // Liberar horário se estiver concluído ou cancelado
             if (apt.status === 'CANCELLED' || apt.status === 'COMPLETED') return false;
-            
+
             const aptStart = timeToMinutes(apt.time);
             const aptEnd = aptStart + (apt.total_duration || 30);
             return (m < aptEnd && (m + duration) > aptStart);
@@ -308,44 +321,67 @@ export const EditAppointmentModal: React.FC<EditAppointmentModalProps> = ({
               <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
                 <Calendar size={14} /> Agendamento
               </h4>
-              
+
+              {/* Barber FIRST so slots filter correctly */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block">Profissional</label>
+                <select
+                  value={barberId}
+                  onChange={e => { setBarberId(e.target.value); setTime(''); }}
+                  className="w-full h-11 bg-slate-900 border border-slate-800 rounded-xl px-4 text-slate-100 font-medium outline-none focus:ring-2 focus:ring-emerald-500/50"
+                >
+                  <option value="">Selecione o profissional primeiro</option>
+                  {barbers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
-                <Input 
-                  type="date" 
-                  label="Data" 
-                  value={date} 
-                  onChange={e => setDate(e.target.value)} 
-                  required
-                />
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block">Data</label>
+                  <input
+                    type="date"
+                    value={date}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={e => { setDate(e.target.value); setTime(''); setIsClosedDay(false); }}
+                    className={`w-full h-11 bg-slate-900 border rounded-xl px-4 text-slate-100 font-medium outline-none focus:ring-2 focus:ring-emerald-500/50 ${
+                      isClosedDay ? 'border-rose-500/60 text-rose-400' : 'border-slate-800'
+                    }`}
+                    required
+                  />
+                  {isClosedDay && (
+                    <p className="text-[10px] text-rose-400 font-bold flex items-center gap-1">
+                      <AlertCircle size={10} /> Barbearia fechada neste dia
+                    </p>
+                  )}
+                </div>
+
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block">
                     Horário {slotLoading && <span className="text-emerald-500 animate-pulse ml-2 text-[8px]">...</span>}
                   </label>
-                  <select 
-                    value={time}
-                    onChange={e => setTime(e.target.value)}
-                    className="w-full h-11 bg-slate-900 border border-slate-800 rounded-xl px-4 text-slate-100 font-medium outline-none focus:ring-2 focus:ring-emerald-500/50 disabled:opacity-50"
-                    required
-                  >
-                    <option value="">Selecione</option>
-                    {appointment && !availableSlots.includes(appointment.time) && appointment.time && (
-                      <option value={appointment.time}>{appointment.time} (Atual)</option>
-                    )}
-                    {availableSlots.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  {!barberId ? (
+                    <div className="w-full h-11 bg-slate-900/50 border border-slate-800 rounded-xl px-4 flex items-center">
+                      <span className="text-xs text-slate-600 italic">Selecione o profissional</span>
+                    </div>
+                  ) : isClosedDay ? (
+                    <div className="w-full h-11 bg-rose-500/5 border border-rose-500/20 rounded-xl px-4 flex items-center">
+                      <span className="text-xs text-rose-400 italic">Dia fechado</span>
+                    </div>
+                  ) : (
+                    <select
+                      value={time}
+                      onChange={e => setTime(e.target.value)}
+                      className="w-full h-11 bg-slate-900 border border-slate-800 rounded-xl px-4 text-slate-100 font-medium outline-none focus:ring-2 focus:ring-emerald-500/50 disabled:opacity-50"
+                      required
+                    >
+                      <option value="">{availableSlots.length === 0 && !slotLoading ? 'Sem horários disponíveis' : 'Selecione'}</option>
+                      {appointment && !availableSlots.includes(appointment.time) && appointment.time && (
+                        <option value={appointment.time}>{appointment.time} (Atual)</option>
+                      )}
+                      {availableSlots.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  )}
                 </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block">Profissional</label>
-                <select 
-                  value={barberId}
-                  onChange={e => setBarberId(e.target.value)}
-                  className="w-full h-11 bg-slate-900 border border-slate-800 rounded-xl px-4 text-slate-100 font-medium outline-none focus:ring-2 focus:ring-emerald-500/50"
-                >
-                  <option value="">Qualquer um</option>
-                  {barbers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
               </div>
 
               <div className="space-y-1.5">
