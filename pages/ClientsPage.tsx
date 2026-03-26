@@ -23,7 +23,6 @@ const ClientsPage: React.FC = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
-    avgTicket: 0,
     retentionRate: 0
   });
   
@@ -72,19 +71,8 @@ const ClientsPage: React.FC = () => {
         }));
         setClients(mappedClients);
 
-        const { data: financialDataRaw } = await supabase
-          .from('financial_transactions' as any)
-          .select('amount, type')
-          .eq('tenant_id', profile.tenant_id);
-        
-        const financialData = (financialDataRaw || []) as any[];
-        const incomeTransactions = financialData.filter(t => t.type === 'REVENUE' || t.type === 'INCOME');
-        const totalRevenue = incomeTransactions.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
-        const avgTicket = incomeTransactions.length > 0 ? totalRevenue / incomeTransactions.length : 0;
-        
         setStats({
           total: mappedClients.length,
-          avgTicket,
           retentionRate: 0
         });
       }
@@ -222,7 +210,7 @@ const ClientsPage: React.FC = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="p-6 bg-slate-900/40 border-slate-800 flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
             <Users size={24} />
@@ -233,22 +221,12 @@ const ClientsPage: React.FC = () => {
           </div>
         </Card>
 
-        <Card className="p-6 bg-slate-900/40 border-slate-800 flex items-center gap-4 border-l-4 border-l-emerald-500">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-            <TrendingUp size={24} />
-          </div>
-          <div>
-            <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Ticket Médio (Geral)</p>
-            <h3 className="text-2xl font-black text-white">R$ {stats.avgTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h3>
-          </div>
-        </Card>
-
         <Card className="p-6 bg-slate-900/40 border-slate-800 flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500">
             <Calendar size={24} />
           </div>
           <div>
-            <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Filtro Ativo</p>
+            <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Clientes no Filtro</p>
             <h3 className="text-2xl font-black text-white">{filteredClients.length}</h3>
           </div>
         </Card>

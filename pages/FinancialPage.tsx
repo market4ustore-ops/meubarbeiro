@@ -13,7 +13,9 @@ import {
   Trash2,
   AlertCircle,
   Package,
-  CheckCircle2
+  CheckCircle2,
+  ShoppingCart,
+  BarChart2
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -312,7 +314,7 @@ const FinancialPage: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="p-5 border-l-4 border-l-emerald-500 bg-slate-900/40">
           <div className="flex justify-between items-start">
             <div>
@@ -354,7 +356,7 @@ const FinancialPage: React.FC = () => {
           <p className="text-[10px] text-slate-500 mt-4">Parte destinada aos profissionais</p>
         </Card>
 
-        <Card className="p-5 border-l-4 border-l-sky-500 bg-slate-900 shadow-xl shadow-emerald-500/5">
+        <Card className="p-5 border-l-4 border-l-sky-500 bg-slate-900/40">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Lucro Líquido</p>
@@ -364,8 +366,22 @@ const FinancialPage: React.FC = () => {
               <DollarSign size={20} />
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-between">
-             <span className="text-[10px] text-slate-500">Ticket Médio: <span className="text-white font-bold">{loading ? '...' : formatCurrency(stats?.averageTicket || 0)}</span></span>
+          <p className="text-[10px] text-slate-500 mt-4">Receita - Despesas - Comissões</p>
+        </Card>
+
+        <Card className="p-5 border-l-4 border-l-purple-500 bg-slate-900 shadow-xl shadow-purple-500/5 col-span-2 lg:col-span-1">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Ticket Médio</p>
+              <h3 className="text-2xl font-black text-purple-400">{loading ? '...' : formatCurrency(stats?.averageTicket || 0)}</h3>
+            </div>
+            <div className="p-2 bg-purple-500/10 rounded-lg text-purple-500">
+              <BarChart2 size={20} />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-1.5 text-[10px] text-slate-500">
+            <ShoppingCart size={10} />
+            <span>{loading ? '...' : (stats?.transactionCount ?? '-')} vendas no período</span>
           </div>
         </Card>
       </div>
