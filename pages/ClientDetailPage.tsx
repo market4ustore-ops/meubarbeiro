@@ -48,6 +48,7 @@ const ClientDetailPage: React.FC = () => {
     totalSpent: 0,
     visitsCount: 0,
     lastVisit: '',
+    avgTicket: 0,
   });
 
   const fetchClientData = async () => {
@@ -130,6 +131,8 @@ const ClientDetailPage: React.FC = () => {
       const totalSpent = (transactions || []).reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
       const visitsCount = (appts || []).filter(a => a.status === 'COMPLETED').length;
       const lastVisit = appts?.find(a => a.status === 'COMPLETED')?.date || '';
+      // Ticket Médio = Faturamento Total / Número de Vendas (transações de receita)
+      const avgTicket = (transactions || []).length > 0 ? totalSpent / (transactions || []).length : 0;
 
       setClient(clientData);
       setHistory(enrichedHistory);
@@ -137,6 +140,7 @@ const ClientDetailPage: React.FC = () => {
         totalSpent,
         visitsCount,
         lastVisit,
+        avgTicket,
       });
 
     } catch (err) {
@@ -242,6 +246,14 @@ const ClientDetailPage: React.FC = () => {
                 <p className="text-lg font-black text-white mt-1">{stats.visitsCount}</p>
              </Card>
              </div>
+             <div className="grid grid-cols-2 gap-4">
+             <Card className="p-5 bg-slate-900 border-slate-800/50">
+                <div className="p-2 bg-purple-500/10 rounded-lg text-purple-500 w-fit mb-3">
+                  <DollarSign size={16} />
+                </div>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Ticket Médio</p>
+                <p className="text-lg font-black text-white mt-1">R$ {stats.avgTicket.toFixed(2)}</p>
+             </Card>
              <Card className="p-5 bg-slate-900 border-slate-800/50">
                 <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500 w-fit mb-3">
                   <Clock size={16} />
@@ -249,6 +261,7 @@ const ClientDetailPage: React.FC = () => {
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Última Visita</p>
                 <p className="text-sm font-black text-white mt-1">{stats.lastVisit ? new Date(`${stats.lastVisit}T12:00:00`).toLocaleDateString('pt-BR') : '-'}</p>
              </Card>
+             </div>
           </div>
         </div>
 
