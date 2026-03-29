@@ -72,6 +72,7 @@ const PublicShopPage: React.FC = () => {
   const [productGallery, setProductGallery] = useState<string[]>([]);
   const [productVariations, setProductVariations] = useState<any[]>([]);
   const [selectedVariationOptions, setSelectedVariationOptions] = useState<Record<string, string>>({});
+  const [detailQuantity, setDetailQuantity] = useState(1);
 
   // Comum
   const [loading, setLoading] = useState(false);
@@ -87,6 +88,33 @@ const PublicShopPage: React.FC = () => {
   const [clientData, setClientData] = useState({ name: '', phone: '' });
 
   const [selectedProductCategory, setSelectedProductCategory] = useState<string | null>(null);
+  
+  // Helpers para reset de estado
+  const resetBookingState = () => {
+    setIsBookingModalOpen(false);
+    setTimeout(() => {
+      setBookingStep(1);
+      setSelectedServices([]);
+      setSelectedBarber(null);
+      setSelectedDate('');
+      setSelectedTime('');
+      setHasBookedInSession(false);
+      setClientData({ name: '', phone: '' });
+    }, 300);
+  };
+
+  const resetCatalogState = () => {
+    setIsCatalogModalOpen(false);
+    setTimeout(() => {
+      setCatalogStep(1);
+      setCart([]);
+      setSelectedProduct(null);
+      setSelectedVariationOptions({});
+      setDetailQuantity(1);
+      setHasOrderedInSession(false);
+      setClientData({ name: '', phone: '' });
+    }, 300);
+  };
 
   // Derivar categorias únicas do catálogo
   const productCategories = useMemo(() => {
@@ -160,7 +188,10 @@ const PublicShopPage: React.FC = () => {
       if (barbersData.error) throw barbersData.error;
 
       setServices(servicesData);
-      setProducts(productsData as any);
+      setProducts((productsData || []).map((p: any) => ({
+        ...p,
+        variations: p.product_variation_types || []
+      })));
       const sortedHours = (hoursData || []).sort((a, b) => {
         const daysOrder = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
         return daysOrder.indexOf(a.day) - daysOrder.indexOf(b.day);
@@ -267,6 +298,7 @@ const PublicShopPage: React.FC = () => {
     setSelectedProduct(product);
     setSelectedGalleryIdx(0);
     setSelectedVariationOptions({});
+    setDetailQuantity(1);
 
     // Fetch images for this product
     const db = supabase as any;
@@ -298,24 +330,50 @@ const PublicShopPage: React.FC = () => {
     const modifier = getVariationPriceModifier();
     const finalPrice = selectedProduct.price + modifier;
     const productWithPrice = { ...selectedProduct, price: finalPrice };
+
+    // Get variation labels for display
+    const variationLabels: string[] = [];
+    for (const vtype of productVariations) {
+      const selectedOptId = selectedVariationOptions[vtype.id];
+      if (selectedOptId) {
+        const opt = (vtype.product_variation_options || []).find((o: any) => o.id === selectedOptId);
+        if (opt) variationLabels.push(`${vtype.name}: ${opt.name}`);
+      }
+    }
+
     setCart(prev => {
-      const existing = prev.find(item => item.product.id === selectedProduct.id);
-      if (existing) {
-        return prev.map(item =>
-          item.product.id === selectedProduct.id
-            ? { ...item, quantity: item.quantity + 1 }
+      // Check for EXISTING item with SAME Product ID AND SAME Variations
+      const existingIdx = prev.findIndex(item => 
+        item.product.id === selectedProduct.id && 
+        JSON.stringify(item.selectedVariations || {}) === JSON.stringify(selectedVariationOptions || {})
+      );
+
+      if (existingIdx !== -1) {
+        return prev.map((item, idx) =>
+          idx === existingIdx
+            ? { ...item, quantity: item.quantity + detailQuantity }
             : item
         );
       }
-      return [...prev, { product: productWithPrice as any, quantity: 1, selectedVariations: selectedVariationOptions }];
+      return [...prev, { 
+        product: productWithPrice as any, 
+        quantity: detailQuantity, 
+        selectedVariations: { ...selectedVariationOptions },
+        variationLabels 
+      }];
     });
     addToast(`${selectedProduct.name} adicionado ao carrinho`, 'success');
     setSelectedProduct(null);
+    setSelectedVariationOptions({});
+    setDetailQuantity(1);
   };
 
-  const updateQuantity = (id: string, delta: number) => {
+  const updateQuantity = (id: string, delta: number, variations?: Record<string, string>) => {
     setCart(prev => prev.map(item => {
-      if (item.product.id === id) {
+      const isSameProduct = item.product.id === id;
+      const isSameVariation = JSON.stringify(item.selectedVariations || {}) === JSON.stringify(variations || {});
+      
+      if (isSameProduct && isSameVariation) {
         const newQty = Math.max(0, item.quantity + delta);
         return { ...item, quantity: newQty };
       }
@@ -385,7 +443,10 @@ const PublicShopPage: React.FC = () => {
     if (isBoth || type === 'order') {
       lines.push(`*DADOS DO PEDIDO*`);
       cart.forEach(item => {
-        lines.push(`• ${item.quantity}x ${item.product.name} (R$ ${(item.product.price * item.quantity).toFixed(2)})`);
+        const vars = (item as any).variationLabels && (item as any).variationLabels.length > 0 
+          ? ` [${(item as any).variationLabels.join(', ')}]` 
+          : '';
+        lines.push(`• ${item.quantity}x ${item.product.name}${vars} (R$ ${(item.product.price * item.quantity).toFixed(2)})`);
       });
       lines.push('');
     }
@@ -428,7 +489,9 @@ const PublicShopPage: React.FC = () => {
         total: cartTotal,
         items: cart.map(item => ({
           product_id: item.product.id,
-          product_name: item.product.name,
+          product_name: (item as any).variationLabels && (item as any).variationLabels.length > 0
+            ? `${item.product.name} [${(item as any).variationLabels.join(', ')}]`
+            : item.product.name,
           quantity: item.quantity,
           unit_price: item.product.price
         }))
@@ -819,7 +882,7 @@ const PublicShopPage: React.FC = () => {
       {/* MODAL DE AGENDAMENTO (MULTI-STEP) */}
       <Modal
         isOpen={isBookingModalOpen}
-        onClose={() => setIsBookingModalOpen(false)}
+        onClose={resetBookingState}
         title={bookingStep === 5 ? "" : "Agendamento Online"}
         maxWidth="max-w-md"
       >
@@ -1087,7 +1150,7 @@ const PublicShopPage: React.FC = () => {
                 <Button className="w-full h-16 gap-3 text-white text-lg font-black shadow-xl shadow-emerald-500/20" onClick={() => handleSendWhatsApp(hasOrderedInSession ? 'both' : 'booking')} style={{ backgroundColor: primaryColor }}>
                   <MessageCircle size={24} /> CONFIRMAR VIA WHATSAPP
                 </Button>
-                <Button variant="ghost" className="w-full h-12 text-slate-500 hover:text-white" onClick={() => setIsBookingModalOpen(false)}>
+                <Button variant="ghost" className="w-full h-12 text-slate-500 hover:text-white" onClick={resetBookingState}>
                   Fazer isso mais tarde
                 </Button>
               </div>
@@ -1099,147 +1162,267 @@ const PublicShopPage: React.FC = () => {
       {/* MODAL DE CATÁLOGO (MULTI-STEP) */}
       <Modal
         isOpen={isCatalogModalOpen}
-        onClose={() => setIsCatalogModalOpen(false)}
+        onClose={resetCatalogState}
         title={catalogStep === 4 ? "" : "Catálogo de Produtos"}
         maxWidth="max-w-2xl"
       >
         <div className="relative">
-          {catalogStep < 4 && (
-            <div className="mb-6 flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/5 rounded-lg" style={{ color: primaryColor }}>
-                  <ShoppingCart size={20} />
-                </div>
-                <div>
-                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Carrinho</p>
-                  <p className="text-sm font-black text-white">{cart.length} itens • R$ {cartTotal.toFixed(2)}</p>
-                </div>
-              </div>
-              {cart.length > 0 && catalogStep === 1 && (
-                <Button onClick={() => setCatalogStep(2)} className="h-10 px-4 text-xs" style={{ backgroundColor: primaryColor }}>Ver Carrinho</Button>
-              )}
-            </div>
-          )}
 
           {selectedProduct ? (
-            /* ── Product detail view ── */
-            <div className="space-y-4 animate-in fade-in duration-200">
-              <div className="flex items-center gap-2">
-                <button onClick={() => setSelectedProduct(null)} className="p-1 hover:bg-slate-800 rounded-lg" style={{ color: primaryColor }}>
-                  <ChevronLeft size={20} />
-                </button>
-                <h4 className="text-base font-bold text-white line-clamp-1">{selectedProduct.name}</h4>
-              </div>
+            /* ── Product detail view (Redesigned) ── */
+            <div className="animate-in fade-in duration-300">
+              <button 
+                onClick={() => setSelectedProduct(null)} 
+                className="mb-6 flex items-center gap-2 text-slate-400 hover:text-white transition-colors group"
+                style={{ color: primaryColor }}
+              >
+                <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+                <span className="text-sm font-bold uppercase tracking-widest">Voltar para o Catálogo</span>
+              </button>
 
-              {/* Main image */}
-              {productGallery.length > 0 && (
-                <div className="rounded-2xl overflow-hidden aspect-square bg-slate-900 relative">
-                  <img src={productGallery[selectedGalleryIdx]} className="w-full h-full object-cover" alt={selectedProduct.name} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+                {/* Left Column: Gallery */}
+                <div className="space-y-4">
+                  <div className="aspect-square rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 relative group">
+                    <img 
+                      src={productGallery[selectedGalleryIdx]} 
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                      alt={selectedProduct.name} 
+                    />
+                    {/* Zoom Icon Placeholder (as in image) */}
+                    <div className="absolute bottom-4 right-4 p-2 bg-black/60 rounded-lg backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity">
+                       <Plus size={20} className="text-white" />
+                    </div>
+                  </div>
+
+                  {/* Thumbnail Strip */}
                   {productGallery.length > 1 && (
-                    <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5">
-                      {productGallery.map((_, idx) => (
-                        <button key={idx} onClick={() => setSelectedGalleryIdx(idx)}
-                          className={`w-2 h-2 rounded-full transition-all ${idx === selectedGalleryIdx ? 'scale-125' : 'bg-white/30 hover:bg-white/60'}`}
-                          style={idx === selectedGalleryIdx ? { backgroundColor: primaryColor } : {}}
-                        />
+                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                      {productGallery.map((url, idx) => (
+                        <button 
+                          key={idx} 
+                          onClick={() => setSelectedGalleryIdx(idx)}
+                          className={`aspect-square rounded-xl overflow-hidden border-2 transition-all p-0.5 ${idx === selectedGalleryIdx ? 'border-none ring-2 ring-offset-2 ring-offset-slate-950' : 'border-slate-800 opacity-60 hover:opacity-100 dark:ring-offset-slate-950'}`}
+                          style={idx === selectedGalleryIdx ? { outline: `2px solid ${primaryColor}`, outlineOffset: '2px' } : {}}
+                        >
+                          <img src={url} className="w-full h-full object-cover rounded-lg" alt="" />
+                        </button>
                       ))}
                     </div>
                   )}
                 </div>
-              )}
 
-              {/* Thumbnail strip */}
-              {productGallery.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto no-scrollbar">
-                  {productGallery.map((url, idx) => (
-                    <button key={idx} onClick={() => setSelectedGalleryIdx(idx)}
-                      className={`w-14 h-14 shrink-0 rounded-xl overflow-hidden border-2 transition-all ${idx === selectedGalleryIdx ? '' : 'border-slate-800 opacity-50 hover:opacity-80'}`}
-                      style={idx === selectedGalleryIdx ? { borderColor: primaryColor } : {}}
+                {/* Right Column: Details */}
+                <div className="flex flex-col">
+                  <div className="space-y-6">
+                    <div>
+                      <h2 className="text-3xl md:text-4xl font-black text-white leading-tight uppercase tracking-tighter">
+                        {selectedProduct.name}
+                      </h2>
+                        <div className="flex items-center gap-4 mt-4">
+                          {(() => {
+                            const modifier = getVariationPriceModifier();
+                            const currentPrice = selectedProduct.price + modifier;
+                            const isShowingMinPrice = currentPrice === 0 && productVariations.length > 0;
+                            
+                            let finalDisplayPrice = currentPrice;
+                            if (isShowingMinPrice) {
+                              let minPossibleModifier = 0;
+                              productVariations.forEach(vtype => {
+                                const options = vtype.product_variation_options || [];
+                                if (options.length > 0) {
+                                  const minOfVtype = Math.min(...options.map((o: any) => o.price_modifier || 0));
+                                  minPossibleModifier += minOfVtype;
+                                }
+                              });
+                              finalDisplayPrice = selectedProduct.price + minPossibleModifier;
+                            }
+
+                            return (
+                              <div className="flex flex-col">
+                                {isShowingMinPrice && (
+                                  <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-0.5 animate-in fade-in slide-in-from-left-2">
+                                    A partir de
+                                  </span>
+                                )}
+                                <span className="text-3xl font-black" style={{ color: primaryColor }}>
+                                  R$ {finalDisplayPrice.toFixed(2)}
+                                </span>
+                              </div>
+                            );
+                          })()}
+                        {getVariationPriceModifier() !== 0 && (
+                          <span className="text-lg text-slate-500 line-through opacity-50 font-bold italic">
+                            R$ {selectedProduct.price.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-6 pt-4 border-t border-white/5">
+                        <div className="space-y-1">
+                          <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">SKU</p>
+                          <p className="text-xs text-white font-bold">{(selectedProduct as any).sku || selectedProduct.id.slice(0, 8).toUpperCase()}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">STATUS</p>
+                          <p className={`text-xs font-bold ${selectedProduct.stock && selectedProduct.stock > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                            {selectedProduct.stock && selectedProduct.stock > 0 ? 'EM ESTOQUE' : 'ESGOTADO'}
+                          </p>
+                        </div>
+                    </div>
+
+                    <div className="pt-2">
+                       <p className="text-sm text-slate-400 leading-relaxed font-medium line-clamp-6 whitespace-pre-line">
+                          {(selectedProduct as any).description || "Este produto não possui descrição detalhada no momento."}
+                       </p>
+                    </div>
+
+                    {/* Variation selectors */}
+                    {productVariations.map((vtype: any) => (
+                      <div key={vtype.id} className="space-y-3">
+                        <p className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
+                           {vtype.name}: <span className="text-slate-500">{ (vtype.product_variation_options || []).find((o:any) => o.id === selectedVariationOptions[vtype.id])?.name || "SELECIONE" }</span>
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {(vtype.product_variation_options || []).map((opt: any) => {
+                            const isSelected = selectedVariationOptions[vtype.id] === opt.id;
+                            return (
+                              <button key={opt.id}
+                                onClick={() => setSelectedVariationOptions(prev => ({ ...prev, [vtype.id]: isSelected ? '' : opt.id }))}
+                                className={`px-4 py-2 border-2 text-sm font-bold transition-all uppercase tracking-wider min-w-[60px] rounded-xl ${isSelected ? 'text-white border-transparent' : 'bg-transparent border-slate-800 text-slate-400 hover:border-slate-600'}`}
+                                style={isSelected ? { backgroundColor: primaryColor, borderColor: primaryColor } : {}}
+                              >
+                                {opt.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+
+                    <div className="pt-6 space-y-4">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center bg-slate-900 border-2 border-slate-800 rounded-lg overflow-hidden h-14">
+                           <button 
+                             onClick={() => setDetailQuantity(Math.max(1, detailQuantity - 1))}
+                             className="px-4 h-full hover:bg-slate-800 transition-colors text-white"
+                           >
+                             <Minus size={18} />
+                           </button>
+                           <span className="w-12 text-center text-lg font-black text-white">
+                             {detailQuantity}
+                           </span>
+                           <button 
+                             onClick={() => setDetailQuantity(detailQuantity + 1)}
+                             className="px-4 h-full hover:bg-slate-800 transition-colors text-white"
+                           >
+                             <Plus size={18} />
+                           </button>
+                        </div>
+                      </div>
+
+                      <Button 
+                        onClick={handleAddToCartFromDetail} 
+                        className="w-full h-16 text-lg font-black uppercase tracking-widest shadow-xl shadow-black/20" 
+                        style={{ backgroundColor: primaryColor }}
+                      >
+                        ADICIONAR AO CARRINHO
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* ── Product flow (Step 1) ── */
+            catalogStep === 1 && (
+              <div className="space-y-4 animate-in fade-in duration-300">
+                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                  <button
+                    onClick={() => setSelectedProductCategory(null)}
+                    className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${!selectedProductCategory ? 'bg-white text-slate-950 border-white' : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-600'}`}
+                    style={!selectedProductCategory ? { backgroundColor: primaryColor, borderColor: primaryColor, color: '#fff' } : {}}
+                  >
+                    TODOS
+                  </button>
+                  {productCategories.map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedProductCategory(cat)}
+                      className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${selectedProductCategory === cat ? 'bg-white text-slate-950 border-white' : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-600'}`}
+                      style={selectedProductCategory === cat ? { backgroundColor: primaryColor, borderColor: primaryColor, color: '#fff' } : {}}
                     >
-                      <img src={url} className="w-full h-full object-cover" alt="" />
+                      {cat.toUpperCase()}
                     </button>
                   ))}
                 </div>
-              )}
 
-              {/* Price */}
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-black" style={{ color: primaryColor }}>
-                  R$ {(selectedProduct.price + getVariationPriceModifier()).toFixed(2)}
-                </span>
-                {getVariationPriceModifier() !== 0 && (
-                  <span className="text-xs text-slate-500 line-through">R$ {selectedProduct.price.toFixed(2)}</span>
-                )}
+                <div className="grid grid-cols-2 gap-4 max-h-[500px] overflow-y-auto no-scrollbar pr-2 pb-4">
+                  {filteredProducts.map(product => {
+                    // Logic to calculate minimum price if variations exist
+                    const variations = (product as any).variations || [];
+                    const hasVariations = product.has_variations && variations.length > 0;
+                    let displayPrice = product.price;
+
+                    if (hasVariations) {
+                      let minModifier = Infinity;
+                      let foundAnyOption = false;
+                      variations.forEach((vt: any) => {
+                        vt.product_variation_options?.forEach((opt: any) => {
+                          minModifier = Math.min(minModifier, opt.price_modifier || 0);
+                          foundAnyOption = true;
+                        });
+                      });
+                      if (foundAnyOption) displayPrice = product.price + minModifier;
+                    }
+
+                    return (
+                      <Card key={product.id} className="bg-slate-900 border-slate-800 overflow-hidden flex flex-col group cursor-pointer" onClick={() => openProductDetail(product)}>
+                        <div className="aspect-square relative overflow-hidden">
+                          <img src={(product as any).image_url || (product as any).image || 'https://via.placeholder.com/300'} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt={product.name} />
+                        </div>
+                        <div className="p-3 flex-1 flex flex-col justify-between gap-3">
+                          <div>
+                            <h4 className="font-bold text-sm text-white line-clamp-1 uppercase tracking-tight">{product.name}</h4>
+                            <p className="text-lg font-black mt-1" style={{ color: primaryColor }}>
+                              {product.has_variations ? (
+                                <span className="flex flex-col">
+                                  <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">A partir de</span>
+                                  <span>R$ {displayPrice.toFixed(2)}</span>
+                                </span>
+                              ) : (
+                                `R$ ${product.price.toFixed(2)}`
+                              )}
+                            </p>
+                          </div>
+                        <Button onClick={(e) => { e.stopPropagation(); openProductDetail(product); }} className="w-full h-9 text-xs gap-2" style={{ backgroundColor: primaryColor }}>
+                          <Plus size={14} /> Ver Produto
+                        </Button>
+                      </div>
+                    </Card>
+                  )})}
+                </div>
               </div>
+            )
+          )}
 
-              {/* Variation selectors */}
-              {productVariations.map((vtype: any) => (
-                <div key={vtype.id} className="space-y-2">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{vtype.name}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {(vtype.product_variation_options || []).map((opt: any) => {
-                      const isSelected = selectedVariationOptions[vtype.id] === opt.id;
-                      return (
-                        <button key={opt.id}
-                          onClick={() => setSelectedVariationOptions(prev => ({ ...prev, [vtype.id]: isSelected ? '' : opt.id }))}
-                          className={`px-3 py-1.5 rounded-lg border text-sm font-bold transition-all ${isSelected ? 'text-white' : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500'}`}
-                          style={isSelected ? { backgroundColor: primaryColor, borderColor: primaryColor, color: '#fff' } : {}}
-                        >
-                          {opt.name}{opt.price_modifier > 0 ? ` +R$${opt.price_modifier.toFixed(2)}` : opt.price_modifier < 0 ? ` -R$${Math.abs(opt.price_modifier).toFixed(2)}` : ''}
-                        </button>
-                      );
-                    })}
+          {/* Sticky cart footer */}
+          {catalogStep === 1 && cart.length > 0 && !selectedProduct && (
+            <div className="sticky bottom-0 left-0 right-0 mt-4 -mx-4 md:-mx-6 -mb-4 md:-mb-6 px-4 md:px-6 py-3 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 z-10">
+              <div className="flex justify-between items-center gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl" style={{ backgroundColor: `${primaryColor}1A`, color: primaryColor }}>
+                    <ShoppingCart size={18} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Carrinho</p>
+                    <p className="text-sm font-black text-white">{cart.length} {cart.length === 1 ? 'item' : 'itens'} • R$ {cartTotal.toFixed(2)}</p>
                   </div>
                 </div>
-              ))}
-
-              <Button onClick={handleAddToCartFromDetail} className="w-full h-12 gap-2 text-white" style={{ backgroundColor: primaryColor }}>
-                <Plus size={16} /> Adicionar ao Carrinho
-              </Button>
-            </div>
-          ) : (
-            /* ── Product grid ── */
-            <div className="space-y-4">
-              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-                <button
-                  onClick={() => setSelectedProductCategory(null)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${!selectedProductCategory ? 'bg-white text-slate-950 border-white' : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-600'}`}
-                  style={!selectedProductCategory ? { backgroundColor: primaryColor, borderColor: primaryColor, color: '#fff' } : {}}
-                >
-                  TODOS
-                </button>
-                {productCategories.map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedProductCategory(cat)}
-                    className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${selectedProductCategory === cat ? 'bg-white text-slate-950 border-white' : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-600'}`}
-                    style={selectedProductCategory === cat ? { backgroundColor: primaryColor, borderColor: primaryColor, color: '#fff' } : {}}
-                  >
-                    {cat.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 max-h-[500px] overflow-y-auto no-scrollbar pr-2 pb-4">
-                {filteredProducts.map(product => (
-                  <Card key={product.id} className="bg-slate-900 border-slate-800 overflow-hidden flex flex-col group cursor-pointer" onClick={() => openProductDetail(product)}>
-                    <div className="aspect-square relative overflow-hidden">
-                      <img src={(product as any).image_url || (product as any).image || 'https://via.placeholder.com/300'} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt={product.name} />
-                      <div className="absolute top-2 left-2">
-                        <Badge variant="secondary" className="bg-black/50 backdrop-blur-md border-white/10">{(product as any).categories?.name || 'Geral'}</Badge>
-                      </div>
-                    </div>
-                    <div className="p-3 flex-1 flex flex-col justify-between gap-3">
-                      <div>
-                        <h4 className="font-bold text-sm text-white line-clamp-1 uppercase tracking-tight">{product.name}</h4>
-                        <p className="text-lg font-black mt-1" style={{ color: primaryColor }}>R$ {product.price.toFixed(2)}</p>
-                      </div>
-                      <Button onClick={(e) => { e.stopPropagation(); openProductDetail(product); }} className="w-full h-9 text-xs gap-2" style={{ backgroundColor: primaryColor }}>
-                        <Plus size={14} /> Ver Produto
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
+                <Button onClick={() => setCatalogStep(2)} className="h-10 px-5 text-xs font-bold shadow-lg" style={{ backgroundColor: primaryColor, boxShadow: `0 4px 14px 0 ${primaryColor}40` }}>
+                  Ver Carrinho
+                </Button>
               </div>
             </div>
           )}
@@ -1257,18 +1440,27 @@ const PublicShopPage: React.FC = () => {
                 {cart.length === 0 ? (
                   <div className="text-center py-10 text-slate-500 italic">Seu carrinho está vazio.</div>
                 ) : (
-                  cart.map(item => (
-                    <div key={item.product.id} className="flex items-center gap-4 p-3 bg-slate-900 rounded-xl border border-slate-800">
+                  cart.map((item, idx) => (
+                    <div key={`${item.product.id}-${idx}`} className="flex items-center gap-4 p-3 bg-slate-900 rounded-xl border border-slate-800">
                       <img src={item.product.image_url || 'https://via.placeholder.com/150'} className="w-16 h-16 rounded-lg object-cover" />
                       <div className="flex-1">
                         <h5 className="font-bold text-sm text-white">{item.product.name}</h5>
+                        {(item as any).variationLabels && (item as any).variationLabels.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-0.5 mb-1">
+                            {(item as any).variationLabels.map((label: string, idx: number) => (
+                              <span key={idx} className="text-[9px] font-bold text-slate-500 bg-slate-800/80 px-1.5 py-0.5 rounded-sm uppercase tracking-tight">
+                                {label}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <p className="text-xs font-black" style={{ color: primaryColor }}>R$ {item.product.price.toFixed(2)}</p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <button onClick={() => updateQuantity(item.product.id, -1)} className="p-1 text-slate-400 hover:text-white"><Minus size={16} /></button>
+                        <button onClick={() => updateQuantity(item.product.id, -1, item.selectedVariations)} className="p-1 text-slate-400 hover:text-white"><Minus size={16} /></button>
                         <span className="text-sm font-bold text-white w-4 text-center">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.product.id, 1)} className="p-1 text-slate-400 hover:text-white"><Plus size={16} /></button>
-                        <button onClick={() => updateQuantity(item.product.id, -item.quantity)} className="ml-2 p-1 text-red-500/50 hover:text-red-500"><Trash2 size={16} /></button>
+                        <button onClick={() => updateQuantity(item.product.id, 1, item.selectedVariations)} className="p-1 text-slate-400 hover:text-white"><Plus size={16} /></button>
+                        <button onClick={() => updateQuantity(item.product.id, -item.quantity, item.selectedVariations)} className="ml-2 p-1 text-red-500/50 hover:text-red-500"><Trash2 size={16} /></button>
                       </div>
                     </div>
                   ))
@@ -1321,9 +1513,16 @@ const PublicShopPage: React.FC = () => {
                 <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-2">Resumo do Pedido</p>
                 <div className="space-y-1">
                   {cart.map(item => (
-                    <div key={item.product.id} className="flex justify-between text-sm">
-                      <span className="text-slate-300">{item.quantity}x {item.product.name}</span>
-                      <span className="text-white font-bold">R$ {(item.product.price * item.quantity).toFixed(2)}</span>
+                    <div key={`${item.product.id}-${JSON.stringify(item.selectedVariations)}`} className="flex flex-col border-b border-slate-800/30 py-2 last:border-0">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-300">{item.quantity}x {item.product.name}</span>
+                        <span className="text-white font-bold">R$ {(item.product.price * item.quantity).toFixed(2)}</span>
+                      </div>
+                      {(item as any).variationLabels && (item as any).variationLabels.length > 0 && (
+                        <span className="text-[10px] text-slate-500 italic">
+                          {(item as any).variationLabels.join(', ')}
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1374,7 +1573,7 @@ const PublicShopPage: React.FC = () => {
                 <Button className="w-full h-16 gap-3 text-white text-lg font-black shadow-xl shadow-emerald-500/20" onClick={() => handleSendWhatsApp(hasBookedInSession ? 'both' : 'order')} style={{ backgroundColor: primaryColor }}>
                   <MessageCircle size={24} /> CONFIRMAR PEDIDO NO WHATSAPP
                 </Button>
-                <Button variant="ghost" className="w-full h-12 text-slate-400 hover:text-white" onClick={() => setIsCatalogModalOpen(false)}>
+                <Button variant="ghost" className="w-full h-12 text-slate-400 hover:text-white" onClick={resetCatalogState}>
                   Ótimo!
                 </Button>
               </div>

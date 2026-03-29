@@ -107,8 +107,24 @@ const ProductsPage: React.FC = () => {
   // KPIs dinâmicos
   const stats = useMemo(() => {
     const total = products.reduce((acc, p) => acc + p.stock, 0);
-    const critical = products.filter(p => p.stock <= p.minStock).length;
-    const value = products.reduce((acc, p) => acc + (p.price * p.stock), 0);
+    const critical = products.filter(p => p.stock <= (p.minStock || 0)).length;
+    
+    const value = products.reduce((acc, p) => {
+      if (p.has_variations && p.variations && p.variations.length > 0) {
+        // Sum value of each variation option: (base price + modifier) * stock
+        const productVariationsValue = p.variations.reduce((vAcc: number, v: any) => {
+          const optionsValue = (v.product_variation_options || []).reduce((oAcc: number, opt: any) => {
+            const finalPrice = p.price + (opt.price_modifier || 0);
+            return oAcc + (finalPrice * (opt.stock || 0));
+          }, 0);
+          return vAcc + optionsValue;
+        }, 0);
+        return acc + productVariationsValue;
+      }
+      // Simple product
+      return acc + (p.price * p.stock);
+    }, 0);
+
     return { total, critical, value };
   }, [products]);
 
@@ -312,30 +328,59 @@ const ProductsPage: React.FC = () => {
                           </tr>
                           {/* Expanded Variations View */}
                           {product.has_variations && expandedProducts.includes(product.id) && (
-                            <tr className="bg-slate-900/40 border-l-2 border-emerald-500">
-                              <td colSpan={5} className="px-16 py-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <tr className="bg-slate-900/40 border-l-2 border-emerald-500 overflow-hidden">
+                              <td colSpan={5} className="p-0">
+                                <div className="divide-y divide-slate-800/50">
                                   {(product as any).variations?.map((v: any) => (
-                                    <div key={v.id} className="space-y-2">
-                                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{v.name}</p>
-                                      <div className="space-y-1">
-                                        {v.product_variation_options?.map((opt: any) => (
-                                          <div key={opt.id} className="flex items-center justify-between text-xs bg-slate-800/50 p-2 rounded-lg border border-slate-700/50">
-                                            <span className="text-slate-200 font-medium">{opt.name}</span>
-                                            <div className="flex gap-3">
-                                              <span className={`text-xs ${opt.stock <= (opt.min_stock || 0) ? 'text-red-500 font-bold' : 'text-slate-400'}`}>
-                                                {opt.stock} unid.
-                                              </span>
-                                              {opt.price_modifier !== 0 && (
-                                                <span className={opt.price_modifier > 0 ? 'text-emerald-500' : 'text-red-500'}>
-                                                  {opt.price_modifier > 0 ? '+' : ''} R$ {opt.price_modifier.toFixed(2)}
-                                                </span>
-                                              )}
+                                    <React.Fragment key={v.id}>
+                                      {v.product_variation_options?.map((opt: any) => {
+                                        const finalPrice = product.price + (opt.price_modifier || 0);
+                                        const isLowStock = opt.stock <= (opt.min_stock || 0);
+                                        
+                                        return (
+                                          <div key={opt.id} className="flex items-center hover:bg-slate-800/20 transition-colors py-3 group/sub">
+                                            {/* Name / Type Column - matches first column */}
+                                            <div className="w-[30%] min-w-[200px] px-6 pl-20 flex items-center gap-2">
+                                              <div className="w-1.5 h-1.5 rounded-full bg-slate-700 shrink-0" />
+                                              <div className="flex flex-col">
+                                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{v.name}</span>
+                                                <span className="text-sm font-semibold text-slate-300">{opt.name}</span>
+                                              </div>
                                             </div>
+
+                                            {/* Category Column - matches second */}
+                                            <div className="w-[15%] min-w-[120px] px-6">
+                                              <span className="text-[10px] font-medium text-slate-600 italic">Variação</span>
+                                            </div>
+
+                                            {/* Price Column - matches third */}
+                                            <div className="w-[15%] min-w-[100px] px-6">
+                                              <span className="text-sm font-bold text-slate-300">
+                                                R$ {finalPrice.toFixed(2)}
+                                              </span>
+                                            </div>
+
+                                            {/* Stock Column - matches fourth */}
+                                            <div className="flex-1 px-6">
+                                              <div className="flex items-center gap-2 max-w-[200px]">
+                                                <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                                  <div
+                                                    className={`h-full rounded-full transition-all duration-500 ${isLowStock ? 'bg-red-500' : 'bg-emerald-500'}`}
+                                                    style={{ width: `${Math.min((opt.stock / ((opt.min_stock || 5) * 2)) * 100, 100)}%` }}
+                                                  ></div>
+                                                </div>
+                                                <span className={`text-[11px] font-bold ${isLowStock ? 'text-red-500' : 'text-slate-400'}`}>
+                                                  {opt.stock} unid.
+                                                </span>
+                                              </div>
+                                            </div>
+
+                                            {/* Empty space for actions */}
+                                            <div className="w-[15%] min-w-[120px] px-6 text-right" />
                                           </div>
-                                        ))}
-                                      </div>
-                                    </div>
+                                        );
+                                      })}
+                                    </React.Fragment>
                                   ))}
                                 </div>
                               </td>

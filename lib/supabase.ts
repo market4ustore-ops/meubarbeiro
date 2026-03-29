@@ -50,7 +50,14 @@ export async function getServicesByTenant(tenantId: string) {
 export async function getProductsByTenant(tenantId: string) {
     const { data, error } = await supabase
         .from('products')
-        .select('*, categories(name, color)')
+        .select(`
+            *,
+            categories(name, color),
+            product_variation_types(
+                *,
+                product_variation_options(*)
+            )
+        `)
         .eq('tenant_id', tenantId)
         .gt('stock', 0)
         .order('name')

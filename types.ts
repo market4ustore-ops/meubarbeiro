@@ -71,7 +71,9 @@ export interface Service {
 
 export type Product = Tables<'products'> & { 
   categories?: { name: string, color: string },
-  has_variations?: boolean 
+  has_variations?: boolean,
+  description?: string,
+  sku?: string
 };
 /*
 export interface Product {

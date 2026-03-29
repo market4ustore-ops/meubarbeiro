@@ -18,7 +18,7 @@ import { Card, Button, Input, Badge, Modal } from '../components/UI';
 import { useToast } from '../context/ToastContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
-import { getOrdersByTenant, updateOrderStatus, processSale } from '../lib/supabase';
+import { supabase, getOrdersByTenant, updateOrderStatus, processSale } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
 
 type DBOrder = Database['public']['Tables']['product_orders']['Row'] & {
@@ -57,17 +57,48 @@ const OrdersPage: React.FC = () => {
     }
   }, [user?.tenant_id]);
 
-  const loadOrders = async () => {
+  const loadOrders = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const data = await getOrdersByTenant(user!.tenant_id);
       setOrders(data as DBOrder[]);
     } catch (err: any) {
       addToast('Erro ao carregar pedidos.', 'error');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
+
+  // Realtime subscription for orders
+  useEffect(() => {
+    if (!user?.tenant_id) return;
+
+    console.log('[Realtime] Tentando se inscrever em product_orders para tenant:', user.tenant_id);
+    
+    const channel = supabase
+      .channel(`orders-realtime-${user.tenant_id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'product_orders',
+          filter: `tenant_id=eq.${user.tenant_id}`
+        },
+        (payload) => {
+          console.log('[Realtime] Mudança detectada nos pedidos:', payload);
+          loadOrders(true);
+        }
+      )
+      .subscribe((status) => {
+        console.log(`[Realtime] Status da inscrição: ${status}`);
+      });
+
+    return () => {
+      console.log('[Realtime] Limpando inscrição de pedidos');
+      supabase.removeChannel(channel);
+    };
+  }, [user?.tenant_id]);
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -338,9 +369,23 @@ const OrdersPage: React.FC = () => {
 
                 {/* Center - Items Summary */}
                 <div className="flex-1 px-4 hidden md:block">
-                  <p className="text-sm text-slate-400">
-                    {order.product_order_items.map(i => `${i.quantity}x ${i.product_name}`).join(', ')}
-                  </p>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    {order.product_order_items.map((i, idx) => (
+                      <div key={idx} className="flex items-center gap-1.5 bg-slate-800/40 px-2 py-1 rounded-lg border border-slate-800/50">
+                        <span className="text-[10px] font-black text-emerald-500">{i.quantity}x</span>
+                        <span className="text-xs text-slate-300 font-medium">{i.product_name.split(' [')[0]}</span>
+                        {i.product_name.includes(' [') && (
+                          <div className="flex gap-1">
+                            {i.product_name.match(/\[(.*?)\]/)?.[1].split(', ').map((v, vIdx) => (
+                              <Badge key={vIdx} variant="info" className="text-[10px] px-2 py-0 h-auto bg-sky-500/20 text-sky-300 border-sky-500/30">
+                                {v}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Right - Total & Actions */}
@@ -433,8 +478,24 @@ const OrdersPage: React.FC = () => {
                         <Package size={18} />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-white">{item.product_name}</p>
-                        <p className="text-xs text-slate-500">R$ {item.unit_price?.toFixed(2)} cada</p>
+                        <div className="flex flex-col">
+                          <p className="text-sm font-bold text-white">
+                            {item.product_name.split(' [')[0]}
+                          </p>
+                          {item.product_name.includes(' [') && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {item.product_name
+                                .match(/\[(.*?)\]/)?.[1]
+                                .split(', ')
+                                .map((v, i) => (
+                                  <Badge key={i} variant="info" className="text-[10px] px-2 py-0.5 h-auto bg-sky-500/20 text-sky-300 border-sky-500/30 font-medium whitespace-normal break-words">
+                                    {v}
+                                  </Badge>
+                                ))}
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">R$ {item.unit_price?.toFixed(2)} cada</p>
                       </div>
                     </div>
                     <div className="text-right">

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { DollarSign, BarChart3, Package, Plus, Trash2, ChevronDown, ChevronUp, Image as ImageIcon, Layers, Info } from 'lucide-react';
+import { DollarSign, BarChart3, Package, Plus, Trash2, ChevronDown, ChevronUp, Image as ImageIcon, Layers, Info, Sparkles } from 'lucide-react';
 import { Modal, Input, Button, Card, Badge } from './UI';
 import { Product, Category } from '../types';
 import { supabase } from '../lib/supabase';
@@ -56,7 +56,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     minStock: 5,
     featured: false,
     image: '',
-    has_variations: false
+    has_variations: false,
+    sku: '',
+    description: ''
   });
 
   // Multi-image state
@@ -93,7 +95,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       setFormData({
         ...rest,
         category: category_id || '',
-        has_variations: rest.has_variations || false
+        has_variations: rest.has_variations || false,
+        sku: (rest as any).sku || '',
+        description: (rest as any).description || ''
       });
       fetchProductExtras(id);
     } else {
@@ -105,7 +109,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         minStock: 5,
         featured: false,
         image: '',
-        has_variations: false
+        has_variations: false,
+        sku: '',
+        description: ''
       });
       setImages([]);
       setVariations([]);
@@ -197,7 +203,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         min_stock: formData.minStock,
         featured: formData.featured,
         has_variations: formData.has_variations,
-        image_url: images.length > 0 ? images[0].url : (formData.image || null)
+        image_url: images.length > 0 ? images[0].url : (formData.image || null),
+        sku: formData.sku || null,
+        description: formData.description || null
       };
 
 
@@ -341,6 +349,23 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const visibleVariations = variations.filter(v => !v.toDelete);
   const isLowStock = formData.stock <= formData.minStock;
 
+  const generateSku = () => {
+    if (!formData.name) {
+      addToast('Digite o nome do produto primeiro para gerar um SKU.', 'warning');
+      return;
+    }
+    const prefix = formData.name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .slice(0, 3)
+      .toUpperCase();
+    
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const newSku = `${prefix}-${random}`;
+    setFormData(prev => ({ ...prev, sku: newSku }));
+  };
+
   const tabs = [
     { id: 'info', label: 'Informações', icon: <Info size={15} /> },
     { id: 'fotos', label: `Fotos (${images.length})`, icon: <ImageIcon size={15} /> },
@@ -383,13 +408,41 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         {/* ── Tab: Informações ── */}
         {activeTab === 'info' && (
           <div className="space-y-4 animate-in fade-in duration-200">
-            <Input
-              label="Nome do Produto"
-              placeholder="Ex: Pomada Efeito Matte"
-              value={formData.name}
-              onChange={e => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Nome do Produto"
+                placeholder="Ex: Pomada Efeito Matte"
+                value={formData.name}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+              <div className="relative group">
+                <Input
+                  label="SKU / Referência"
+                  placeholder="Ex: POM-001"
+                  value={formData.sku || ''}
+                  onChange={e => setFormData({ ...formData, sku: e.target.value })}
+                />
+                <button
+                  type="button"
+                  onClick={generateSku}
+                  className="absolute right-2 top-[34px] p-1.5 text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all"
+                  title="Gerar SKU automático"
+                >
+                  <Sparkles size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-400">Descrição do Produto</label>
+              <textarea
+                className="w-full bg-slate-900 border border-slate-800 rounded-lg py-2.5 px-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 appearance-none min-h-[100px] text-sm"
+                placeholder="Descreva os detalhes, benefícios e modo de uso do produto..."
+                value={formData.description || ''}
+                onChange={e => setFormData({ ...formData, description: e.target.value })}
+              />
+            </div>
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-slate-400">Categoria</label>
@@ -538,55 +591,56 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                         {vtype.options.map((opt, oIdx) => {
                           if (opt.toDelete) return null;
                           return (
-                            <div key={oIdx} className="rounded-xl border border-slate-700/60 bg-slate-900/60 overflow-hidden">
-                              {/* Option title bar */}
-                              <div className="flex items-center justify-between px-4 py-2.5 bg-slate-800/40 border-b border-slate-700/50">
-                                <input
-                                  type="text"
+                            <div key={oIdx} className="bg-slate-900/40 rounded-2xl border border-slate-700/50 p-5 space-y-5 relative group transition-all hover:border-slate-600 hover:bg-slate-900/60">
+                              {/* Remove button — visible on hover or mobile */}
+                              <button 
+                                type="button" 
+                                onClick={() => removeOption(vIdx, oIdx)} 
+                                className="absolute top-4 right-4 text-slate-600 hover:text-red-500 transition-colors p-1.5 hover:bg-red-500/10 rounded-lg"
+                                title="Remover opção"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+
+                              <div className="pt-2">
+                                <Input
+                                  label="Nome da Opção"
+                                  placeholder="Ex: P, M, G ou Azul, Preto..."
                                   value={opt.name}
                                   onChange={e => updateOption(vIdx, oIdx, 'name', e.target.value)}
-                                  placeholder="Nome da opção (ex: P, M, G)"
-                                  className="flex-1 bg-transparent text-sm font-semibold text-white placeholder-slate-600 focus:outline-none"
+                                  className="!bg-slate-950/50"
                                 />
-                                <button type="button" onClick={() => removeOption(vIdx, oIdx)} className="text-red-500/60 hover:text-red-400 transition-colors ml-3 shrink-0">
-                                  <Trash2 size={14} />
-                                </button>
                               </div>
-                              {/* Option fields — one per row */}
-                              <div className="px-4 py-3 space-y-3">
-                                <div>
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">+/- Preço (R$)</label>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    value={opt.price_modifier || ''}
-                                    onChange={e => updateOption(vIdx, oIdx, 'price_modifier', parseFloat(e.target.value) || 0)}
-                                    placeholder="0.00 (sem acréscimo/desconto)"
-                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
-                                  />
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Estoque atual</label>
-                                    <input
-                                      type="number"
-                                      value={opt.stock || ''}
-                                      onChange={e => updateOption(vIdx, oIdx, 'stock', parseInt(e.target.value) || 0)}
-                                      placeholder="0"
-                                      className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Estoque mínimo</label>
-                                    <input
-                                      type="number"
-                                      value={opt.min_stock || ''}
-                                      onChange={e => updateOption(vIdx, oIdx, 'min_stock', parseInt(e.target.value) || 0)}
-                                      placeholder="5"
-                                      className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
-                                    />
-                                  </div>
-                                </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <Input
+                                  label="+/- Preço (R$)"
+                                  type="number"
+                                  step="0.01"
+                                  icon={<DollarSign size={14} />}
+                                  value={opt.price_modifier || ''}
+                                  onChange={e => updateOption(vIdx, oIdx, 'price_modifier', parseFloat(e.target.value) || 0)}
+                                  placeholder="0.00"
+                                  className="!bg-slate-950/50"
+                                />
+                                <Input
+                                  label="Estoque Atual"
+                                  type="number"
+                                  icon={<Package size={14} />}
+                                  value={opt.stock || ''}
+                                  onChange={e => updateOption(vIdx, oIdx, 'stock', parseInt(e.target.value) || 0)}
+                                  placeholder="0"
+                                  className="!bg-slate-950/50"
+                                />
+                                <Input
+                                  label="Mínimo"
+                                  type="number"
+                                  icon={<BarChart3 size={14} />}
+                                  value={opt.min_stock || ''}
+                                  onChange={e => updateOption(vIdx, oIdx, 'min_stock', parseInt(e.target.value) || 0)}
+                                  placeholder="5"
+                                  className="!bg-slate-950/50"
+                                />
                               </div>
                             </div>
                           );
