@@ -17,21 +17,17 @@ import {
   Trash2,
   Globe
 } from 'lucide-react';
-import { Card, Button, Input, Badge } from '../components/UI';
+import { Card, Button, Input, Badge, Toggle } from '../components/UI';
 import { SaaSBarberShop } from '../types';
 import { SaaSShopModal } from '../components/SaaSShopModal';
 import { useToast } from '../context/ToastContext';
+import { supabase } from '../lib/supabase';
 
-const INITIAL_MOCK_SHOPS: SaaSBarberShop[] = [
-  { id: '1', name: 'Barber Shop Vintage', slug: 'barber-shop-vintage', ownerName: 'Lucas Silva', email: 'contato@barbervintage.com', phone: '(11) 98888-7777', plan: 'PROFESSIONAL', status: 'ACTIVE', createdAt: '2023-10-12', monthlyRevenue: 99.90 },
-  { id: '2', name: 'Dom Juan Barber', slug: 'dom-juan-barber', ownerName: 'Roberto Almeida', email: 'contato@domjuan.com', phone: '(11) 97777-6666', plan: 'ESSENTIAL', status: 'ACTIVE', createdAt: '2023-11-05', monthlyRevenue: 49.90 },
-  { id: '3', name: 'Estilo Urbano', slug: 'estilo-urbano', ownerName: 'Carlos Paiva', email: 'carlos@estilo.com', phone: '(11) 96666-5555', plan: 'PREMIUM', status: 'SUSPENDED', createdAt: '2024-01-20', monthlyRevenue: 199.90 },
-  { id: '4', name: 'Barber Kids', slug: 'barber-kids', ownerName: 'Ana Paula', email: 'kids@barber.com', phone: '(11) 95555-4444', plan: 'PROFESSIONAL', status: 'TRIAL', createdAt: '2024-03-01', monthlyRevenue: 0 },
-];
 
 const BarberShopsListPage: React.FC = () => {
   const { addToast } = useToast();
-  const [shops, setShops] = useState<SaaSBarberShop[]>(INITIAL_MOCK_SHOPS);
+  const [shops, setShops] = useState<SaaSBarberShop[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingShop, setEditingShop] = useState<SaaSBarberShop | null>(null);
@@ -45,39 +41,142 @@ const BarberShopsListPage: React.FC = () => {
     );
   }, [shops, searchTerm]);
 
+  const fetchShops = async () => {
+    try {
+      setLoading(true);
+      // Busca tenants
+      const { data: tenantsData, error: tenantsError } = await supabase
+        .from('tenants')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (tenantsError) throw tenantsError;
+
+      // Busca donos (users onde role=OWNER)
+      const { data: ownersData, error: ownersError } = await supabase
+        .from('users')
+        .select('tenant_id, name')
+        .eq('role', 'OWNER');
+
+      if (ownersError) throw ownersError;
+
+      // Busca planos
+      const { data: plansData, error: plansError } = await supabase
+        .from('saas_plans')
+        .select('id, name, price');
+
+      if (plansError) throw plansError;
+
+      const ownersMap = ownersData.reduce((acc, owner) => {
+        if (owner.tenant_id) acc[owner.tenant_id] = owner.name;
+        return acc;
+      }, {} as Record<string, string>);
+
+      const plansMap = plansData.reduce((acc, plan) => {
+        acc[plan.id] = { name: plan.name, price: plan.price };
+        return acc;
+      }, {} as Record<string, { name: string; price: number }>);
+
+      const mappedShops: SaaSBarberShop[] = (tenantsData || []).map(t => {
+        const planInfo = t.plan_id ? plansMap[t.plan_id] : null;
+        return {
+          id: t.id,
+          name: t.name,
+          slug: t.slug,
+          ownerName: ownersMap[t.id] || 'Sem Dono',
+          email: t.email,
+          phone: t.phone || '',
+          plan: planInfo ? (planInfo.name as any) : 'Sem Plano',
+          status: t.status,
+          createdAt: new Date(t.created_at).toLocaleDateString('pt-BR'),
+          monthlyRevenue: planInfo ? planInfo.price : 0,
+          suspendedAt: t.suspended_at
+        } as SaaSBarberShop & { suspendedAt?: string };
+      });
+
+      setShops(mappedShops);
+    } catch (error) {
+      console.error('Error fetching shops:', error);
+      addToast('Erro ao carregar as barbearias.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchShops();
+  }, []);
+
   const handleOpenModal = (shop?: SaaSBarberShop) => {
     setEditingShop(shop || null);
     setIsModalOpen(true);
   };
 
-  const handleSaveShop = (shop: SaaSBarberShop) => {
-    if (editingShop) {
-      setShops(prev => prev.map(s => s.id === shop.id ? shop : s));
-      addToast(`Configurações de "${shop.name}" atualizadas.`, 'success');
-    } else {
-      setShops(prev => [shop, ...prev]);
-      addToast(`Nova barbearia "${shop.name}" provisionada com sucesso!`, 'success');
-    }
+  const handleSaveShop = async (shop: SaaSBarberShop) => {
+    // Apenas relista as shops, pois o modal já salva/atualiza e retorna
+    await fetchShops();
     setIsModalOpen(false);
   };
 
-  const handleToggleStatus = (id: string) => {
-    setShops(prev => prev.map(shop => {
-      if (shop.id === id) {
-        const newStatus = shop.status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED';
-        addToast(`Status da shop alterado para ${newStatus}.`, 'info');
-        return { ...shop, status: newStatus as any };
-      }
-      return shop;
-    }));
-  };
+  const handleToggleStatus = async (id: string) => {
+    const shop = shops.find(s => s.id === id);
+    if (!shop) return;
 
-  const handleDeleteShop = (id: string) => {
-    if (confirm('ATENÇÃO: Esta ação é irreversível. Todos os dados da barbearia (agenda, clientes, estoque) serão deletados permanentemente. Deseja continuar?')) {
-      setShops(prev => prev.filter(s => s.id !== id));
-      addToast('Shop removida da plataforma.', 'warning');
+    const newStatus = shop.status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED';
+    
+    // Atualização otimista para feedback instantâneo
+    setShops(prev => prev.map(s => s.id === id ? { ...s, status: newStatus } : s));
+
+    try {
+      const updateData: any = { status: newStatus };
+      
+      if (newStatus === 'SUSPENDED') {
+        updateData.suspended_at = new Date().toISOString();
+      } else {
+        updateData.suspended_at = null;
+      }
+
+      const { error } = await supabase.from('tenants').update(updateData).eq('id', id);
+      if (error) {
+        // Rollback se falhar
+        setShops(prev => prev.map(s => s.id === id ? { ...s, status: shop.status } : s));
+        throw error;
+      }
+      
+      addToast(`Status da shop alterado para ${newStatus}.`, 'info');
+    } catch (error) {
+      console.error('Erro ao alternar status do tenant:', error);
+      addToast('Erro ao mudar status.', 'error');
     }
   };
+
+  const handleDeleteShop = async (id: string) => {
+    if (confirm('ATENÇÃO: Esta ação deleta a barbearia do sistema apenas se ela estiver suspensa há mais de 30 dias. Continuar?')) {
+      try {
+        const { data, error } = await supabase.rpc('delete_tenant_cascade', { p_tenant_id: id });
+        
+        if (error) throw error;
+        
+        if (data && data.success) {
+          addToast('Shop e seus dados removidos permanentemente.', 'success');
+          fetchShops();
+        } else {
+          addToast(data.error || 'Erro ao remover tenant.', 'warning');
+        }
+      } catch (error: any) {
+        console.error('Erro na deleção em cascata:', error);
+        addToast(error.message || 'Erro ao deletar shop.', 'error');
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <div className="w-8 h-8 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -175,17 +274,15 @@ const BarberShopsListPage: React.FC = () => {
                      >
                        <ExternalLink size={18} />
                      </button>
-                     <button 
-                       onClick={() => handleToggleStatus(shop.id)}
-                       className={`p-2 rounded-lg transition-colors border ${
-                         shop.status === 'SUSPENDED' 
-                         ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500 hover:text-white' 
-                         : 'bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500 hover:text-white'
-                       }`}
-                       title={shop.status === 'SUSPENDED' ? "Ativar" : "Suspender"}
-                     >
-                       {shop.status === 'SUSPENDED' ? <CheckCircle2 size={18} /> : <Ban size={18} />}
-                     </button>
+                      <div className="flex flex-col items-end gap-1 px-2">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">
+                          {shop.status === 'SUSPENDED' ? 'Suspensa' : 'Ativa'}
+                        </span>
+                        <Toggle 
+                          enabled={shop.status !== 'SUSPENDED'} 
+                          onChange={() => handleToggleStatus(shop.id)}
+                        />
+                      </div>
                      <button 
                        onClick={() => handleDeleteShop(shop.id)}
                        className="p-2 bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white rounded-lg transition-colors"

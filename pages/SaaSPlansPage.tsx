@@ -23,6 +23,7 @@ import { Card, Button, Badge, Input } from '../components/UI';
 import { SaaSPlan } from '../types';
 import { SaaSPlanModal } from '../components/SaaSPlanModal';
 import { useToast } from '../context/ToastContext';
+import { supabase } from '../lib/supabase';
 
 const INITIAL_PLANS: SaaSPlan[] = [
   {
@@ -42,7 +43,8 @@ const INITIAL_PLANS: SaaSPlan[] = [
 
 const SaaSPlansPage: React.FC = () => {
   const { addToast } = useToast();
-  const [plans, setPlans] = useState<SaaSPlan[]>(INITIAL_PLANS);
+  const [plans, setPlans] = useState<SaaSPlan[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<SaaSPlan | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -64,35 +66,121 @@ const SaaSPlansPage: React.FC = () => {
     return { totalRevenue, totalSubs };
   }, [plans]);
 
+  // Busca os planos do banco de dados
+  const fetchPlans = async () => {
+    try {
+      setLoading(true);
+      // Busca planos
+      const { data: plansData, error: plansError } = await supabase
+        .from('saas_plans')
+        .select('*')
+        .order('price', { ascending: true });
+
+      if (plansError) throw plansError;
+
+      // Busca tenants para contar assinaturas ativas por plano
+      const { data: tenantsData, error: tenantsError } = await supabase
+        .from('tenants')
+        .select('plan_id')
+        .eq('status', 'ACTIVE');
+
+      if (tenantsError) throw tenantsError;
+
+      const subscriptionCounts = tenantsData.reduce((acc, tenant) => {
+        if (tenant.plan_id) {
+          acc[tenant.plan_id] = (acc[tenant.plan_id] || 0) + 1;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+
+      const mappedPlans: SaaSPlan[] = (plansData || []).map(p => ({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        billingCycle: p.billing_cycle,
+        description: p.description || '',
+        maxBarbers: p.max_barbers || 'UNLIMITED',
+        maxProducts: p.max_products || 'UNLIMITED',
+        features: p.features || { whatsapp: false, inventory: false, reports: false, digitalCard: false, multiBranch: false },
+        status: p.status,
+        isPopular: p.is_popular,
+        activeSubscriptions: subscriptionCounts[p.id] || 0
+      }));
+
+      setPlans(mappedPlans);
+    } catch (error) {
+      console.error('Error fetching plans:', error);
+      addToast('Erro ao carregar os planos.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchPlans();
+  }, []);
+
   const handleOpenModal = (plan?: SaaSPlan) => {
     setEditingPlan(plan || null);
     setIsModalOpen(true);
   };
 
-  const handleSavePlan = (plan: SaaSPlan) => {
-    if (editingPlan) {
-      setPlans(prev => prev.map(p => p.id === plan.id ? plan : p));
-      addToast(`Plano "${plan.name}" atualizado.`, 'success');
-    } else {
-      setPlans(prev => [...prev, plan]);
-      addToast(`Plano "${plan.name}" criado com sucesso!`, 'success');
+  const handleSavePlan = async (plan: SaaSPlan) => {
+    try {
+      const dbPayload = {
+        name: plan.name,
+        price: plan.price,
+        billing_cycle: plan.billingCycle,
+        description: plan.description,
+        max_barbers: plan.maxBarbers === 'UNLIMITED' ? null : plan.maxBarbers,
+        max_products: plan.maxProducts === 'UNLIMITED' ? null : plan.maxProducts,
+        features: plan.features,
+        status: plan.status,
+        is_popular: plan.isPopular
+      };
+
+      if (editingPlan) {
+        const { error } = await supabase.from('saas_plans').update(dbPayload).eq('id', plan.id);
+        if (error) throw error;
+        addToast(`Plano "${plan.name}" atualizado.`, 'success');
+      } else {
+        const { error } = await supabase.from('saas_plans').insert([dbPayload]);
+        if (error) throw error;
+        addToast(`Plano "${plan.name}" criado com sucesso!`, 'success');
+      }
+      setIsModalOpen(false);
+      fetchPlans();
+    } catch (error) {
+      console.error('Error saving plan:', error);
+      addToast('Erro ao salvar o plano.', 'error');
     }
-    setIsModalOpen(false);
   };
 
-  const handleDuplicatePlan = (plan: SaaSPlan) => {
-    const newPlan: SaaSPlan = {
-      ...plan,
-      id: Math.random().toString(36).substr(2, 9),
-      name: `${plan.name} (Cópia)`,
-      activeSubscriptions: 0,
-      isPopular: false
-    };
-    setPlans(prev => [...prev, newPlan]);
-    addToast(`Plano "${plan.name}" duplicado.`, 'info');
+  const handleDuplicatePlan = async (plan: SaaSPlan) => {
+    try {
+      const newPlan = {
+        name: `${plan.name} (Cópia)`,
+        price: plan.price,
+        billing_cycle: plan.billingCycle,
+        description: plan.description,
+        max_barbers: plan.maxBarbers === 'UNLIMITED' ? null : plan.maxBarbers,
+        max_products: plan.maxProducts === 'UNLIMITED' ? null : plan.maxProducts,
+        features: plan.features,
+        status: 'ARCHIVED', // Cria como arquivado por padrão
+        is_popular: false
+      };
+
+      const { error } = await supabase.from('saas_plans').insert([newPlan]);
+      if (error) throw error;
+      addToast(`Plano duplicado com sucesso.`, 'success');
+      fetchPlans();
+    } catch (error) {
+      console.error('Error duplicating plan:', error);
+      addToast('Erro ao duplicar plano.', 'error');
+    }
   };
 
-  const handleDeletePlan = (id: string) => {
+  const handleDeletePlan = async (id: string) => {
     const plan = plans.find(p => p.id === id);
     if (!plan) return;
 
@@ -102,21 +190,41 @@ const SaaSPlansPage: React.FC = () => {
     }
 
     if (confirm('Deseja remover este plano permanentemente?')) {
-      setPlans(prev => prev.filter(p => p.id !== id));
-      addToast('Plano removido.', 'info');
+      try {
+        const { error } = await supabase.from('saas_plans').delete().eq('id', id);
+        if (error) throw error;
+        addToast('Plano removido.', 'info');
+        fetchPlans();
+      } catch (error) {
+        console.error('Error deleting plan:', error);
+        addToast('Erro ao remover plano.', 'error');
+      }
     }
   };
 
-  const handleToggleArchive = (id: string) => {
-    setPlans(prev => prev.map(p => {
-      if (p.id === id) {
-        const isArchiving = p.status === 'ACTIVE';
-        addToast(isArchiving ? `Plano "${p.name}" arquivado.` : `Plano "${p.name}" restaurado.`, 'info');
-        return { ...p, status: isArchiving ? 'ARCHIVED' : 'ACTIVE' };
-      }
-      return p;
-    }));
+  const handleToggleArchive = async (id: string) => {
+    const plan = plans.find(p => p.id === id);
+    if (!plan) return;
+    try {
+      const newStatus = plan.status === 'ACTIVE' ? 'ARCHIVED' : 'ACTIVE';
+      const { error } = await supabase.from('saas_plans').update({ status: newStatus }).eq('id', id);
+      if (error) throw error;
+      
+      addToast(newStatus === 'ARCHIVED' ? `Plano "${plan.name}" arquivado.` : `Plano "${plan.name}" restaurado.`, 'info');
+      fetchPlans();
+    } catch (error) {
+      console.error('Error archiving plan:', error);
+      addToast('Erro ao arquivar/restaurar plano.', 'error');
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <div className="w-8 h-8 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">

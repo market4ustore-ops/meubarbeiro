@@ -83,6 +83,23 @@ export const Badge: React.FC<{
   );
 };
 
+export const Toggle: React.FC<{
+  enabled: boolean;
+  onChange: (enabled: boolean) => void;
+  activeColor?: string;
+  className?: string;
+}> = ({ enabled, onChange, activeColor = 'bg-emerald-600', className }) => {
+  return (
+    <button
+      onClick={() => onChange(!enabled)}
+      type="button"
+      className={`w-11 h-6 rounded-full relative transition-colors duration-200 outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 focus:ring-emerald-500/50 ${enabled ? activeColor : 'bg-slate-800'} ${className}`}
+    >
+      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-200 shadow-sm ${enabled ? 'left-6' : 'left-1'}`} />
+    </button>
+  );
+};
+
 export interface ModalProps {
   isOpen: boolean;
   onClose: () => void;

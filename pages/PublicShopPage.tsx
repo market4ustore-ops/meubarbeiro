@@ -26,6 +26,7 @@ import {
 import { Card, Button, Badge, Modal, Input } from '../components/UI';
 import { useToast } from '../context/ToastContext';
 import { supabase } from '../lib/supabase';
+import { WhatsAppService } from '../lib/whatsapp_service';
 import {
   getTenantBySlug,
   getServicesByTenant,
@@ -504,6 +505,9 @@ const PublicShopPage: React.FC = () => {
       } else {
         setCatalogStep(4); // Sucesso direto
       }
+
+      // Notificação Automática (SaaS) agora tratada via Trigger no banco de dados
+
     } catch (err: any) {
       addToast('Erro ao criar pedido. Tente novamente.', 'error');
     } finally {
@@ -536,6 +540,9 @@ const PublicShopPage: React.FC = () => {
       } else {
         setBookingStep(5); // Sucesso direto
       }
+
+      // Notificação Automática (SaaS) agora tratada via Trigger no banco de dados
+
     } catch (err: any) {
       addToast('Erro ao agendar. Tente novamente.', 'error');
     } finally {

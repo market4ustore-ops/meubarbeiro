@@ -15,7 +15,8 @@ import {
   Globe,
   ShoppingBag,
   DollarSign,
-  Zap
+  Zap,
+  CheckSquare
 } from 'lucide-react';
 import { Service, Product, Barber, Appointment, AppointmentStatus, Category, ShopSettings } from './types';
 
@@ -37,6 +38,7 @@ export const SAAS_NAV_ITEMS = [
   { name: 'Visão Geral SaaS', icon: <BarChart3 className="w-5 h-5" />, path: '/saas/dashboard' },
   { name: 'Barbearias (Tenants)', icon: <Store className="w-5 h-5" />, path: '/saas/shops' },
   { name: 'Planos e Preços', icon: <CreditCard className="w-5 h-5" />, path: '/saas/plans' },
+  { name: 'Atividades', icon: <CheckSquare className="w-5 h-5" />, path: '/saas/atividades' },
   { name: 'Configurações Globais', icon: <Globe className="w-5 h-5" />, path: '/saas/settings' },
 ];
 

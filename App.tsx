@@ -14,6 +14,7 @@ import SaaSDashboardPage from './pages/SaaSDashboardPage';
 import BarberShopsListPage from './pages/BarberShopsListPage';
 import SaaSPlansPage from './pages/SaaSPlansPage';
 import SaaSGlobalSettingsPage from './pages/SaaSGlobalSettingsPage';
+import SaaSActivitiesPage from './pages/SaaSActivitiesPage';
 import AgendaPage from './pages/AgendaPage';
 import ServicesPage from './pages/ServicesPage';
 import ProductsPage from './pages/ProductsPage';
@@ -361,6 +362,7 @@ const App: React.FC = () => {
                     <Route path="/saas/dashboard" element={<SaaSDashboardPage />} />
                     <Route path="/saas/shops" element={<BarberShopsListPage />} />
                     <Route path="/saas/plans" element={<SaaSPlansPage />} />
+                    <Route path="/saas/atividades" element={<SaaSActivitiesPage />} />
                     <Route path="/saas/settings" element={<SaaSGlobalSettingsPage />} />
                     <Route path="*" element={<Navigate to="/saas/dashboard" replace />} />
                   </>

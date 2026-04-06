@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
   Users, 
@@ -12,23 +12,155 @@ import {
 } from 'lucide-react';
 import { Card, Badge, Button } from '../components/UI';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { supabase } from '../lib/supabase';
 
-const revenueData = [
-  { name: 'Jan', mrr: 12000, newShops: 12 },
-  { name: 'Fev', mrr: 15400, newShops: 18 },
-  { name: 'Mar', mrr: 18900, newShops: 22 },
-  { name: 'Abr', mrr: 24000, newShops: 31 },
-  { name: 'Mai', mrr: 32000, newShops: 45 },
-  { name: 'Jun', mrr: 45000, newShops: 58 },
-];
+interface DashboardMetrics {
+  mrr: number;
+  totalShops: number;
+  activeShops: number;
+  churnRate: number;
+  ltv: number;
+  totalUsers: number;
+  recentShops: any[];
+  chartData: any[];
+}
 
 const SaaSDashboardPage: React.FC = () => {
+  const [metrics, setMetrics] = useState<DashboardMetrics>({
+    mrr: 0,
+    totalShops: 0,
+    activeShops: 0,
+    churnRate: 0,
+    ltv: 0,
+    totalUsers: 0,
+    recentShops: [],
+    chartData: []
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+
+        // Fetch tenants
+        const { data: tenants, error: tenantsError } = await supabase
+          .from('tenants')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (tenantsError) throw tenantsError;
+
+        // Fetch saas plans
+        const { data: plans, error: plansError } = await supabase
+          .from('saas_plans')
+          .select('*');
+
+        if (plansError) throw plansError;
+
+        // Fetch users count
+        const { count: usersCount, error: usersError } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true });
+
+        if (usersError) throw usersError;
+
+        // Fetch owners for the recent shops table
+        const { data: owners } = await supabase
+          .from('users')
+          .select('tenant_id, name')
+          .eq('role', 'OWNER');
+
+        const ownersMap = (owners || []).reduce((acc, o) => {
+          if (o.tenant_id) acc[o.tenant_id] = o.name;
+          return acc;
+        }, {} as any);
+
+        const plansMap = (plans || []).reduce((acc, p) => {
+          acc[p.id] = { name: p.name, price: p.price };
+          return acc;
+        }, {} as any);
+
+        const totalShops = (tenants || []).length;
+        const activeShops = (tenants || []).filter(t => t.status === 'ACTIVE').length;
+        const suspendedShops = (tenants || []).filter(t => t.status === 'SUSPENDED').length;
+        const churnRate = totalShops > 0 ? (suspendedShops / totalShops) * 100 : 0;
+
+        let totalMrr = 0;
+        (tenants || []).forEach(t => {
+          if (t.status === 'ACTIVE' && t.plan_id && plansMap[t.plan_id]) {
+            totalMrr += plansMap[t.plan_id].price;
+          }
+        });
+
+        const ltv = activeShops > 0 ? totalMrr / activeShops : 0;
+
+        // Calculate chart data (Group tenants by month of creation)
+        const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        const currentYear = new Date().getFullYear();
+        const chartDataMap: Record<number, { name: string; mrr: number; newShops: number }> = {};
+        
+        for (let i = 0; i < 6; i++) {
+          let date = new Date(currentYear, new Date().getMonth() - 5 + i, 1);
+          chartDataMap[date.getMonth()] = { name: months[date.getMonth()], mrr: 0, newShops: 0 };
+        }
+
+        (tenants || []).forEach(t => {
+          const createdAt = new Date(t.created_at);
+          if (chartDataMap[createdAt.getMonth()]) {
+            chartDataMap[createdAt.getMonth()].newShops += 1;
+            if (t.plan_id && plansMap[t.plan_id]) {
+              chartDataMap[createdAt.getMonth()].mrr += plansMap[t.plan_id].price;
+            }
+          }
+        });
+
+        const chartData = Object.values(chartDataMap);
+
+        const recentShops = (tenants || []).slice(0, 5).map(t => ({
+          name: t.name,
+          owner: ownersMap[t.id] || 'N/A',
+          plan: t.plan_id && plansMap[t.plan_id] ? plansMap[t.plan_id].name : 'Trial',
+          status: t.status
+        }));
+
+        setMetrics({
+          mrr: totalMrr,
+          totalShops,
+          activeShops,
+          churnRate,
+          ltv,
+          totalUsers: usersCount || 0,
+          recentShops,
+          chartData: chartData.length > 0 ? chartData : [
+            { name: 'Atual', mrr: totalMrr, newShops: totalShops }
+          ]
+        });
+
+      } catch (error) {
+        console.error("Erro ao puxar dados globais de SaaS:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <div className="w-8 h-8 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Gestão MeuBarbeiro SaaS 🚀</h1>
-          <p className="text-slate-400">Visão panorâmica de toda a rede e métricas financeiras.</p>
+          <p className="text-slate-400">Visão panorâmica de toda a rede e métricas financeiras reais.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="secondary">Relatórios PDF</Button>
@@ -43,10 +175,9 @@ const SaaSDashboardPage: React.FC = () => {
             <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-500">
               <DollarSign size={24} />
             </div>
-            <Badge variant="success">+24%</Badge>
           </div>
           <h3 className="text-slate-400 text-sm font-medium">MRR Global</h3>
-          <p className="text-2xl font-bold text-white mt-1">R$ 45.210,00</p>
+          <p className="text-2xl font-bold text-white mt-1">R$ {metrics.mrr.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
         </Card>
 
         <Card className="p-6 bg-slate-900/80 border-slate-800">
@@ -54,10 +185,10 @@ const SaaSDashboardPage: React.FC = () => {
             <div className="p-2 bg-sky-500/10 rounded-lg text-sky-500">
               <Store size={24} />
             </div>
-            <Badge variant="info">88 Ativos</Badge>
+            <Badge variant="info">{metrics.activeShops} Ativos</Badge>
           </div>
           <h3 className="text-slate-400 text-sm font-medium">Barbearias (Tenants)</h3>
-          <p className="text-2xl font-bold text-white mt-1">124</p>
+          <p className="text-2xl font-bold text-white mt-1">{metrics.totalShops}</p>
         </Card>
 
         <Card className="p-6 bg-slate-900/80 border-slate-800">
@@ -65,10 +196,10 @@ const SaaSDashboardPage: React.FC = () => {
             <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500">
               <Activity size={24} />
             </div>
-            <Badge variant="warning">3.2% Churn</Badge>
+            <Badge variant="warning">{metrics.churnRate.toFixed(1)}% Churn</Badge>
           </div>
-          <h3 className="text-slate-400 text-sm font-medium">LTV Médio</h3>
-          <p className="text-2xl font-bold text-white mt-1">R$ 840,00</p>
+          <h3 className="text-slate-400 text-sm font-medium">LTV Médio (Est. Mensal)</h3>
+          <p className="text-2xl font-bold text-white mt-1">R$ {metrics.ltv.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
         </Card>
 
         <Card className="p-6 bg-slate-900/80 border-slate-800">
@@ -76,10 +207,9 @@ const SaaSDashboardPage: React.FC = () => {
             <div className="p-2 bg-purple-500/10 rounded-lg text-purple-500">
               <Users size={24} />
             </div>
-            <Badge variant="success">+12 Hoje</Badge>
           </div>
           <h3 className="text-slate-400 text-sm font-medium">Usuários na Rede</h3>
-          <p className="text-2xl font-bold text-white mt-1">1.842</p>
+          <p className="text-2xl font-bold text-white mt-1">{metrics.totalUsers}</p>
         </Card>
       </div>
 
@@ -93,7 +223,7 @@ const SaaSDashboardPage: React.FC = () => {
           </div>
           <div className="flex-1 min-h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={revenueData}>
+              <LineChart data={metrics.chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
                 <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
@@ -111,12 +241,12 @@ const SaaSDashboardPage: React.FC = () => {
         <Card className="p-6 flex flex-col">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <UserPlus className="text-sky-500" /> Novas Barbearias / Mês
+              <UserPlus className="text-sky-500" /> Novas Barbearias (Últimos Meses)
             </h2>
           </div>
           <div className="flex-1 min-h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={revenueData}>
+              <BarChart data={metrics.chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
                 <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
@@ -145,25 +275,26 @@ const SaaSDashboardPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
-                {[
-                  { name: 'Cavalera Shop', owner: 'Mário Silva', plan: 'Premium', status: 'ACTIVE' },
-                  { name: 'Retrô Barber', owner: 'Ana Costa', plan: 'Professional', status: 'ACTIVE' },
-                  { name: 'The Blade Studio', owner: 'Felipe Melo', plan: 'Trial', status: 'TRIAL' },
-                  { name: 'Urban Style', owner: 'Carlos Eduardo', plan: 'Essential', status: 'SUSPENDED' },
-                ].map((shop, i) => (
-                  <tr key={i} className="group hover:bg-slate-800/20 transition-colors">
-                    <td className="py-4 font-bold text-slate-200">{shop.name}</td>
-                    <td className="py-4 text-sm text-slate-400">{shop.owner}</td>
-                    <td className="py-4">
-                      <Badge variant={shop.plan === 'Premium' ? 'info' : 'secondary'}>{shop.plan}</Badge>
-                    </td>
-                    <td className="py-4">
-                      <Badge variant={shop.status === 'ACTIVE' ? 'success' : shop.status === 'TRIAL' ? 'warning' : 'danger'}>
-                        {shop.status}
-                      </Badge>
-                    </td>
+                {metrics.recentShops.length > 0 ? (
+                  metrics.recentShops.map((shop, i) => (
+                    <tr key={i} className="group hover:bg-slate-800/20 transition-colors">
+                      <td className="py-4 font-bold text-slate-200">{shop.name}</td>
+                      <td className="py-4 text-sm text-slate-400">{shop.owner}</td>
+                      <td className="py-4">
+                        <Badge variant={shop.plan.includes('Premium') ? 'info' : 'secondary'}>{shop.plan}</Badge>
+                      </td>
+                      <td className="py-4">
+                        <Badge variant={shop.status === 'ACTIVE' ? 'success' : shop.status === 'TRIAL' ? 'warning' : 'danger'}>
+                          {shop.status}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="py-4 text-center text-slate-500">Nenhuma barbearia cadastrada recentemente.</td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
