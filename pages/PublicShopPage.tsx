@@ -21,7 +21,8 @@ import {
   Trash2,
   ShoppingCart,
   AlertCircle,
-  TrendingUp
+  TrendingUp,
+  FileText
 } from 'lucide-react';
 import { Card, Button, Badge, Modal, Input } from '../components/UI';
 import { useToast } from '../context/ToastContext';
@@ -87,6 +88,7 @@ const PublicShopPage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [clientData, setClientData] = useState({ name: '', phone: '' });
+  const [pendingAppointmentData, setPendingAppointmentData] = useState<any>(null);
 
   const [selectedProductCategory, setSelectedProductCategory] = useState<string | null>(null);
   
@@ -100,7 +102,9 @@ const PublicShopPage: React.FC = () => {
       setSelectedDate('');
       setSelectedTime('');
       setHasBookedInSession(false);
+      setHasOrderedInSession(false);
       setClientData({ name: '', phone: '' });
+      setPendingAppointmentData(null);
     }, 300);
   };
 
@@ -477,41 +481,21 @@ const PublicShopPage: React.FC = () => {
     window.open(url, '_blank');
   };
 
-  const handleConfirmOrder = async (e: React.FormEvent) => {
+  const handleConfirmOrder = (e: React.FormEvent) => {
     e.preventDefault();
     if (!tenant) return;
 
-    setLoading(true);
-    try {
-      await createProductOrder({
-        tenant_id: tenant.id,
-        client_name: clientData.name,
-        client_phone: clientData.phone,
-        total: cartTotal,
-        items: cart.map(item => ({
-          product_id: item.product.id,
-          product_name: (item as any).variationLabels && (item as any).variationLabels.length > 0
-            ? `${item.product.name} [${(item as any).variationLabels.join(', ')}]`
-            : item.product.name,
-          quantity: item.quantity,
-          unit_price: item.product.price
-        }))
-      });
+    // Apenas marcamos que o pedido foi iniciado para o fluxo de resumo
+    // Mas não salvamos no banco ainda.
+    
+    // Fecha catálogo e abre modal de agendamento (que agora contém o resumo)
+    setIsCatalogModalOpen(false);
+    setIsBookingModalOpen(true);
 
-      setHasOrderedInSession(true);
-
-      if (tenant.scheduling_enabled && !hasBookedInSession) {
-        setCatalogStep(3.5); // Sugestão de agendamento
-      } else {
-        setCatalogStep(4); // Sucesso direto
-      }
-
-      // Notificação Automática (SaaS) agora tratada via Trigger no banco de dados
-
-    } catch (err: any) {
-      addToast('Erro ao criar pedido. Tente novamente.', 'error');
-    } finally {
-      setLoading(false);
+    if (clientData.name && clientData.phone) {
+      setBookingStep(4.8); // Vai direto para o resumo final
+    } else {
+      setBookingStep(4); // Vai para identificação se não tiver dados
     }
   };
 
@@ -519,30 +503,16 @@ const PublicShopPage: React.FC = () => {
     e.preventDefault();
     if (!tenant || selectedServices.length === 0) return;
 
+    // Apenas avançamos no fluxo de reserva
+    setBookingStep(4.8); // Resumo Final
+  };
+
+  const saveFinalBooking = async (data: any) => {
     setLoading(true);
     try {
-      await createAppointment({
-        tenant_id: tenant.id,
-        service_id: selectedServices[0].id, // Mantemos o primeiro como principal por compatibilidade
-        service_ids: selectedServices.map(s => s.id),
-        total_duration: totalBookingDuration,
-        client_name: clientData.name,
-        client_phone: clientData.phone,
-        date: selectedDate,
-        time: selectedTime,
-        barber_id: selectedBarber?.id
-      });
-
+      await createAppointment(data);
       setHasBookedInSession(true);
-
-      if (tenant.digital_card_enabled && !hasOrderedInSession) {
-        setBookingStep(4.5); // Sugestão de produtos
-      } else {
-        setBookingStep(5); // Sucesso direto
-      }
-
-      // Notificação Automática (SaaS) agora tratada via Trigger no banco de dados
-
+      setBookingStep(5);
     } catch (err: any) {
       addToast('Erro ao agendar. Tente novamente.', 'error');
     } finally {
@@ -627,7 +597,95 @@ const PublicShopPage: React.FC = () => {
     }
 
     return slots;
-  }, [selectedDate, totalBookingDuration, existingAppointments, openingHours]);
+  }, [selectedDate, totalBookingDuration, existingAppointments, openingHours, selectedBarber, barberSchedules]);
+
+  const handleFinalSave = async () => {
+    if (!tenant) return;
+    setLoading(true);
+    
+    try {
+      // 1. Salvar Agendamento se houver serviços selecionados e ainda não foi salvo
+      if (selectedServices.length > 0 && !hasBookedInSession) {
+        await createAppointment({
+          tenant_id: tenant.id,
+          service_id: selectedServices[0].id,
+          service_ids: selectedServices.map(s => s.id),
+          total_duration: totalBookingDuration,
+          client_name: clientData.name,
+          client_phone: clientData.phone,
+          date: selectedDate,
+          time: selectedTime,
+          barber_id: selectedBarber?.id,
+          status: 'PENDING'
+        });
+        setHasBookedInSession(true);
+      }
+
+      // 2. Salvar Pedido de Produtos se houver itens no carrinho e ainda não foi salvo
+      if (cart.length > 0 && !hasOrderedInSession) {
+        await createProductOrder({
+          tenant_id: tenant.id,
+          client_name: clientData.name,
+          client_phone: clientData.phone,
+          total: cartTotal,
+          items: cart.map(item => ({
+            product_id: item.product.id,
+            product_name: item.variationLabels && item.variationLabels.length > 0
+              ? `${item.product.name} [${item.variationLabels.join(', ')}]`
+              : item.product.name,
+            quantity: item.quantity,
+            unit_price: item.product.price
+          }))
+        });
+        setHasOrderedInSession(true);
+      }
+
+      // 3. Disparar Notificação Unificada (Manual)
+      try {
+        await supabase.functions.invoke('whatsapp-notifier', {
+          body: {
+            table: 'unified_checkout',
+            action: 'COMBO',
+            data: {
+              tenant_id: tenant.id,
+              client_name: clientData.name,
+              client_phone: clientData.phone,
+              // Dados do Agendamento
+              appointment: selectedServices.length > 0 ? {
+                date: selectedDate,
+                time: selectedTime,
+                barber_id: selectedBarber?.id,
+                service_ids: selectedServices.map(s => s.id)
+              } : null,
+              // Dados dos Produtos
+              products: cart.length > 0 ? {
+                total: cartTotal,
+                items: cart.map(item => ({
+                  product_id: item.product.id,
+                  product_name: item.variationLabels && item.variationLabels.length > 0
+                    ? `${item.product.name} [${item.variationLabels.join(', ')}]`
+                    : item.product.name,
+                  quantity: item.quantity,
+                  unit_price: item.product.price
+                }))
+              } : null
+            }
+          }
+        });
+      } catch (notifyErr) {
+        console.error('Erro ao disparar notificação manual:', notifyErr);
+        // Não barramos o sucesso se a notificação falhar
+      }
+
+      // 4. Ir para tela de sucesso
+      setBookingStep(5);
+      setCatalogStep(4); // Sucesso no catálogo também se necessário
+    } catch (err: any) {
+      addToast('Erro ao finalizar. Verifique os dados e tente novamente.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (pageLoading) {
     return (
@@ -1013,7 +1071,14 @@ const PublicShopPage: React.FC = () => {
                         {availableTimes.map(t => (
                           <button
                             key={t}
-                            onClick={() => setSelectedTime(t)}
+                            onClick={() => {
+                              setSelectedTime(t);
+                              if (tenant.digital_card_enabled && cart.length === 0) {
+                                setBookingStep(3.5);
+                              } else {
+                                setBookingStep(4);
+                              }
+                            }}
                             className={`py-2 px-3 rounded-lg border text-sm font-bold transition-all ${selectedTime === t ? 'text-white shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}
                             style={selectedTime === t ? { backgroundColor: primaryColor, borderColor: primaryColor } : {}}
                           >
@@ -1030,19 +1095,31 @@ const PublicShopPage: React.FC = () => {
                     )}
                   </div>
                 )}
-                <Button
-                  className="w-full mt-4 h-12"
-                  disabled={!selectedDate || !selectedTime}
-                  onClick={() => {
-                    if (clientData.name && clientData.phone) {
-                      handleConfirmBooking(new Event('submit') as any);
-                    } else {
-                      setBookingStep(4);
-                    }
-                  }}
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  Confirmar Data e Hora
+              </div>
+            </div>
+          )}
+
+          {/* Passo 3.5: Sugestão de Produtos */}
+          {bookingStep === 3.5 && (
+            <div className="space-y-8 py-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex flex-col items-center text-center space-y-6">
+                <div className="w-20 h-20 bg-emerald-500/10 rounded-3xl flex items-center justify-center text-emerald-500">
+                  <ShoppingBag size={40} />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-bold text-white">Quase lá!</h3>
+                  <p className="text-slate-400">
+                    Gostaria de aproveitar e adicionar algum produto ao seu pedido antes de finalizar?
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-4">
+                <Button className="w-full h-14 gap-2 text-white" onClick={() => { setIsBookingModalOpen(false); setIsCatalogModalOpen(true); setCatalogStep(1); }} style={{ backgroundColor: primaryColor }}>
+                  <Plus size={20} /> Ver Catálogo de Produtos
+                </Button>
+                <Button variant="ghost" className="w-full h-12 text-slate-500 hover:text-white font-bold" onClick={() => setBookingStep(4)}>
+                  Não, obrigado. Concluir.
                 </Button>
               </div>
             </div>
@@ -1103,8 +1180,89 @@ const PublicShopPage: React.FC = () => {
                 </div>
               )}
 
-              <Button type="submit" className="w-full h-14 text-lg font-bold" isLoading={loading} style={{ backgroundColor: primaryColor }}>Finalizar e Enviar Comprovante</Button>
+              <Button type="button" className="w-full h-14 text-lg font-bold" onClick={() => setBookingStep(4.8)} style={{ backgroundColor: primaryColor }}>Continuar</Button>
             </form>
+          )}
+
+          {/* Passo 4.8: Resumo Final */}
+          {bookingStep === 4.8 && (
+            <div className="space-y-6 py-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="space-y-4">
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <FileText className="text-emerald-500" size={20} />
+                  Resumo do Agendamento
+                </h3>
+                
+                <Card className="bg-slate-900/50 border-white/5 p-4 space-y-4">
+                  <div className="space-y-3 border-b border-white/5 pb-4">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-400">Serviços:</span>
+                      <span className="text-white font-medium">{selectedServices.map(s => s.name).join(', ')}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-400">Barbeiro:</span>
+                      <span className="text-white font-medium">{selectedBarber?.name || 'A definir'}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-400">Data e Hora:</span>
+                      <span className="text-white font-medium">{new Date(selectedDate + 'T12:00:00').toLocaleDateString('pt-BR')} às {selectedTime}</span>
+                    </div>
+                  </div>
+
+                  {cart.length > 0 && (
+                    <div className="space-y-3 border-b border-white/5 pb-4">
+                      <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Produtos</div>
+                      {cart.map((item, idx) => (
+                        <div key={idx} className="flex justify-between items-start text-sm">
+                          <div className="flex flex-col">
+                            <span className="text-slate-400">{item.quantity}x {item.product.name}</span>
+                            {item.selectedVariations && Object.values(item.selectedVariations).length > 0 && (
+                              <span className="text-[10px] text-slate-500 font-medium">
+                                [{Object.values(item.selectedVariations).join(', ')}]
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-white">R$ {(item.product.price * item.quantity).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="text-lg font-bold text-white">Total Geral</span>
+                    <span className="text-2xl font-black text-emerald-500">
+                      R$ {((selectedServices.reduce((acc, s) => acc + s.price, 0)) + cartTotal).toFixed(2)}
+                    </span>
+                  </div>
+                </Card>
+
+                <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl flex gap-3 items-start">
+                  <AlertCircle className="text-emerald-500 shrink-0 mt-0.5" size={18} />
+                  <p className="text-xs text-emerald-200/70 leading-relaxed">
+                    Ao confirmar, reservaremos seu horário e notificaremos a barbearia imediatamente.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-4">
+                <Button 
+                  className="w-full h-16 text-lg font-bold shadow-xl shadow-emerald-500/10" 
+                  onClick={handleFinalSave}
+                  disabled={loading}
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  {loading ? 'Confirmando...' : 'CONFIRMAR AGENDAMENTO'}
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className="w-full text-slate-500"
+                  onClick={() => setBookingStep(4)}
+                  disabled={loading}
+                >
+                  Voltar e ajustar dados
+                </Button>
+              </div>
+            </div>
           )}
 
           {bookingStep === 4.5 && (
@@ -1118,7 +1276,7 @@ const PublicShopPage: React.FC = () => {
                 <Button className="w-full h-14 gap-2 text-white" onClick={() => { setIsBookingModalOpen(false); setIsCatalogModalOpen(true); setCatalogStep(1); }} style={{ backgroundColor: primaryColor }}>
                   <Plus size={20} /> Ver Catálogo de Produtos
                 </Button>
-                <Button variant="ghost" className="w-full h-12 text-slate-500 hover:text-white font-bold" onClick={() => setBookingStep(5)}>
+                <Button variant="ghost" className="w-full h-12 text-slate-500 hover:text-white font-bold" onClick={() => saveFinalBooking(pendingAppointmentData)}>
                   Não, obrigado. Concluir.
                 </Button>
               </div>
@@ -1130,36 +1288,38 @@ const PublicShopPage: React.FC = () => {
               <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-emerald-500/30" style={{ color: primaryColor }}>
                 <CheckCircle2 size={48} />
               </div>
-              <h2 className="text-2xl font-black text-white">Confirmação Pendente!</h2>
+              <h2 className="text-2xl font-black text-white">Agendamento Realizado!</h2>
               
-              <div className="bg-amber-500/10 border border-amber-500/20 p-6 rounded-2xl space-y-4 text-left">
-                <div className="flex items-center gap-3 text-amber-500">
-                  <AlertCircle size={24} />
-                  <h4 className="font-bold text-lg">Ação Obrigatória</h4>
-                </div>
+              <div className="p-6 rounded-2xl space-y-4 text-center">
                 <p className="text-sm text-slate-300 leading-relaxed">
-                  Para que a barbearia <strong className="text-white">garanta seu horário</strong>, você deve enviar o resumo agora pelo WhatsApp. Agendamentos sem confirmação serão desconsiderados.
+                  Tudo pronto, <strong className="text-white">{clientData.name}</strong>! <br/> 
+                  Seu horário foi reservado e a barbearia <strong className="text-white">já recebeu sua notificação</strong>.
                 </p>
+
                 {tenant?.booking_fee_enabled && (
-                  <div className="bg-white/5 p-4 rounded-xl text-center border border-emerald-500/20">
-                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Valor do PIX {tenant.booking_fee_type === 'percentage' ? `(${tenant.booking_fee_value}%)` : ''}</p>
+                  <div className="bg-emerald-500/5 p-4 rounded-xl text-center border border-emerald-500/20">
+                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Valor da Reserva</p>
                     <p className="text-3xl font-black text-white">R$ {bookingFee.toFixed(2)}</p>
-                    <p className="text-[10px] text-emerald-500 mt-1 font-bold">Enviar Comprovante de Reserva</p>
+                    <p className="text-[10px] text-emerald-500 mt-1 font-bold">Lembre de enviar o PIX caso ainda não tenha feito.</p>
                   </div>
                 )}
               </div>
 
-              {!tenant?.booking_fee_enabled && (
-                <p className="text-slate-400 text-sm">Tudo certo, <strong>{clientData.name}</strong>! Mas lembre-se: o horário só é reservado após o envio da mensagem abaixo.</p>
-              )}
-
               <div className="space-y-3 pt-4">
-                <Button className="w-full h-16 gap-3 text-white text-lg font-black shadow-xl shadow-emerald-500/20" onClick={() => handleSendWhatsApp(hasOrderedInSession ? 'both' : 'booking')} style={{ backgroundColor: primaryColor }}>
-                  <MessageCircle size={24} /> CONFIRMAR VIA WHATSAPP
+                <Button 
+                  className="w-full h-14 text-lg font-bold shadow-xl shadow-emerald-500/20" 
+                  onClick={resetBookingState} 
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  CONCLUÍDO
                 </Button>
-                <Button variant="ghost" className="w-full h-12 text-slate-500 hover:text-white" onClick={resetBookingState}>
-                  Fazer isso mais tarde
-                </Button>
+                
+                <button 
+                  className="text-xs text-slate-500 hover:text-emerald-500 flex items-center gap-2 mx-auto transition-colors"
+                  onClick={() => handleSendWhatsApp(hasOrderedInSession ? 'both' : 'booking')}
+                >
+                  <MessageCircle size={14} /> Precisa de Ajuda ou Enviar Comprovante?
+                </button>
               </div>
             </div>
           )}
@@ -1563,26 +1723,32 @@ const PublicShopPage: React.FC = () => {
           {/* Step 4: Sucesso */}
           {catalogStep === 4 && (
             <div className="text-center py-10 space-y-6 animate-in zoom-in">
-              <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 border-2" style={{ color: primaryColor, borderColor: `${primaryColor}4D` }}>
-                <ShoppingBag size={48} />
+              <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-emerald-500/30" style={{ color: primaryColor }}>
+                <CheckCircle2 size={48} />
               </div>
-              <h2 className="text-2xl font-black text-white">Aguardando Confirmação!</h2>
-              <div className="bg-amber-500/10 border border-amber-500/20 p-6 rounded-2xl space-y-4 text-left">
-                <div className="flex items-center gap-3 text-amber-500">
-                  <ShoppingBag size={24} />
-                  <h4 className="font-bold text-lg">Quase lá!</h4>
-                </div>
+              <h2 className="text-2xl font-black text-white">Pedido Concluído!</h2>
+              <div className="p-6 rounded-2xl space-y-4 text-center">
                 <p className="text-sm text-slate-300 leading-relaxed">
-                  Olá <strong>{clientData.name}</strong>, recebemos seu pedido. Para que possamos separar e reservar seus produtos, <strong className="text-white">você deve confirmar via WhatsApp</strong> agora mesmo.
+                  Recebemos seu pedido, <strong>{clientData.name}</strong>! <br/> 
+                  Já estamos preparando seus produtos para retirada ou envio. <br/> 
+                  <strong className="text-white">A barbearia já recebeu sua notificação.</strong>
                 </p>
               </div>
               <div className="space-y-3 pt-4">
-                <Button className="w-full h-16 gap-3 text-white text-lg font-black shadow-xl shadow-emerald-500/20" onClick={() => handleSendWhatsApp(hasBookedInSession ? 'both' : 'order')} style={{ backgroundColor: primaryColor }}>
-                  <MessageCircle size={24} /> CONFIRMAR PEDIDO NO WHATSAPP
+                <Button 
+                  className="w-full h-14 text-lg font-bold shadow-xl shadow-emerald-500/20" 
+                  onClick={resetCatalogState} 
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  VOLTAR PARA O SITE
                 </Button>
-                <Button variant="ghost" className="w-full h-12 text-slate-400 hover:text-white" onClick={resetCatalogState}>
-                  Ótimo!
-                </Button>
+                
+                <button 
+                  className="text-xs text-slate-500 hover:text-emerald-500 flex items-center gap-2 mx-auto transition-colors"
+                  onClick={() => handleSendWhatsApp(hasBookedInSession ? 'both' : 'order')}
+                >
+                  <MessageCircle size={14} /> Dúvida sobre o Pedido? Falar no Zap
+                </button>
               </div>
             </div>
           )}

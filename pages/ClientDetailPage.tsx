@@ -57,6 +57,9 @@ const ClientDetailPage: React.FC = () => {
     try {
       setLoading(true);
       
+      // 0. Fetch Services (to resolve names/prices)
+      const { data: servicesData } = await supabase.from('services').select('*').eq('tenant_id', profile.tenant_id);
+
       // 1. Fetch Client Info & Barbers
       const { data: clientData, error: clientError } = await supabase
         .from('clients')
@@ -85,18 +88,28 @@ const ClientDetailPage: React.FC = () => {
         .eq('type', 'INCOME')
         .order('date', { ascending: false });
 
+      // Create a services lookup map
+      const servicesMap = new Map((servicesData || []).map(s => [s.id, s]));
+
       // Transform and combine history
       const combinedHistory = [
-        ...(appts || []).map(a => ({
-          id: a.id,
-          type: 'APPOINTMENT',
-          date: a.date,
-          time: a.time,
-          title: 'Serviço de Barbearia',
-          status: a.status,
-          amount: 0, // Will be enriched from transactions if possible
-          icon: <Scissors size={16} />
-        })),
+        ...(appts || []).map(a => {
+          const sIds = a.service_ids || (a.service_id ? [a.service_id] : []);
+          const linkedServices = sIds.map((sid: string) => servicesMap.get(sid)).filter(Boolean);
+          const totalServicePrice = linkedServices.reduce((acc, s) => acc + (s.price || 0), 0);
+          const serviceNames = linkedServices.map(s => s.name).join(', ') || 'Serviço de Barbearia';
+
+          return {
+            id: a.id,
+            type: 'APPOINTMENT',
+            date: a.date,
+            time: a.time,
+            title: serviceNames,
+            status: a.status,
+            amount: totalServicePrice, 
+            icon: <Scissors size={16} />
+          };
+        }),
         ...(transactions || []).map(t => ({
           id: t.id,
           type: 'TRANSACTION',
@@ -115,13 +128,13 @@ const ClientDetailPage: React.FC = () => {
         return dateB.getTime() - dateA.getTime();
       });
 
-      // Enrich appointments with amounts from transactions
+      // Enrich appointments with amounts from transactions (priority for transaction amount if linked)
       const enrichedHistory = (combinedHistory as HistoryItem[]).filter(item => {
         if (item.type === 'TRANSACTION' && item.appointment_id) {
           const apt = combinedHistory.find(h => h.type === 'APPOINTMENT' && h.id === item.appointment_id) as HistoryItem | undefined;
           if (apt) {
             apt.amount = item.amount;
-            return false; // Remove the redundant transaction entry
+            return false; 
           }
         }
         return true;
@@ -131,7 +144,6 @@ const ClientDetailPage: React.FC = () => {
       const totalSpent = (transactions || []).reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
       const visitsCount = (appts || []).filter(a => a.status === 'COMPLETED').length;
       const lastVisit = appts?.find(a => a.status === 'COMPLETED')?.date || '';
-      // Ticket Médio = Faturamento Total / Número de Vendas (transações de receita)
       const avgTicket = (transactions || []).length > 0 ? totalSpent / (transactions || []).length : 0;
 
       setClient(clientData);
@@ -313,7 +325,14 @@ const ClientDetailPage: React.FC = () => {
                                  item.status === 'COMPLETED' || item.status === 'PAID' ? 'success' : 
                                  item.status === 'CANCELLED' ? 'danger' : 'warning'
                                }>
-                                 {item.status}
+                                 {
+                                   item.status === 'CONFIRMED' ? 'Confirmado' :
+                                   item.status === 'COMPLETED' ? 'Concluído' :
+                                   item.status === 'PAID' ? 'Pago' :
+                                   item.status === 'PENDING' ? 'Pendente' :
+                                   item.status === 'CANCELLED' ? 'Cancelado' :
+                                   item.status
+                                 }
                                </Badge>
                                <span className="text-lg font-black text-white">R$ {Number(item.amount).toFixed(2)}</span>
                             </div>

@@ -54,7 +54,7 @@ const SaaSGlobalSettingsPage: React.FC = () => {
   // Configurações Reais de WhatsApp (Banco)
   const [waConfig, setWaConfig] = useState({
     id: '',
-    provider: 'ZAVU' as 'ZAVU' | 'EVOLUTION' | 'UAZAPI',
+    provider: 'ZAVU' as 'ZAVU' | 'EVOLUTION' | 'UAZAPI' | 'WAPI',
     is_active: false,
     api_url: '',
     api_key: '',
@@ -198,6 +198,50 @@ const SaaSGlobalSettingsPage: React.FC = () => {
       addToast('Erro ao salvar algumas configurações.', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSendTest = async () => {
+    try {
+      // 1. Buscar o primeiro tenant para usar como teste
+      const { data: tenant } = await supabase.from('tenants').select('id, name, phone').limit(1).single();
+      
+      if (!tenant) {
+        addToast('Nenhum tenant encontrado para teste.', 'warning');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('whatsapp-notifier', {
+        body: {
+          table: 'appointments',
+          action: 'INSERT',
+          data: {
+            id: 'test-id',
+            tenant_id: tenant.id,
+            client_name: '🚀 Cliente de Teste SaaS',
+            client_phone: '(85) 99921-6730',
+            date: new Date().toISOString().split('T')[0],
+            time: '14:30',
+            barber_id: null,
+            service_id: null,
+            status: 'PENDING',
+            override_phone: '5585999216730'
+          }
+        }
+      });
+
+      console.log('[TestNotification] API response:', data);
+
+      if (data?.success === false) {
+        addToast(`Erro: ${data.error || 'Mensagem não enviada'}. Detalhes: ${data.details || ''}`, 'error');
+        return;
+      }
+
+      if (error) throw error;
+      addToast(`Notificação de teste enviada para ${tenant.name}!`, 'success');
+    } catch (err) {
+      console.error('Erro no teste de notificação:', err);
+      addToast('Erro ao disparar teste. Verifique se a Edge Function está ativa.', 'error');
     }
   };
 
@@ -524,6 +568,7 @@ const SaaSGlobalSettingsPage: React.FC = () => {
                         <option value="ZAVU">Zavu.dev (Oficial)</option>
                         <option value="EVOLUTION">Evolution API (Unofficial)</option>
                         <option value="UAZAPI">Uazapi (Alta Performance)</option>
+                        <option value="WAPI">W-API (w-api.app)</option>
                     </select>
                 </div>
               </div>
@@ -534,23 +579,23 @@ const SaaSGlobalSettingsPage: React.FC = () => {
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  {(waConfig.provider === 'EVOLUTION' || waConfig.provider === 'UAZAPI') && (
+                  {(waConfig.provider === 'EVOLUTION' || waConfig.provider === 'UAZAPI' || waConfig.provider === 'WAPI') && (
                     <Input
-                      label={waConfig.provider === 'UAZAPI' ? "URL da API (Uazapi)" : "URL da API (Evolution)"}
-                      placeholder="https://api.uazapi.com"
+                      label={waConfig.provider === 'WAPI' ? "API Base URL (W-API)" : waConfig.provider === 'UAZAPI' ? "URL da API (Uazapi)" : "URL da API (Evolution)"}
+                      placeholder={waConfig.provider === 'WAPI' ? "https://api.w-api.app/v1" : "https://api.uazapi.com"}
                       value={waConfig.api_url}
                       onChange={e => setWaConfig({ ...waConfig, api_url: e.target.value })}
                     />
                   )}
                   <Input
-                    label={waConfig.provider === 'EVOLUTION' ? "Apikey (Master Token)" : waConfig.provider === 'UAZAPI' ? "Instância Token" : "API Key (Zavu)"}
+                    label={waConfig.provider === 'WAPI' ? "API Token (Bearer)" : waConfig.provider === 'EVOLUTION' ? "Apikey (Master Token)" : waConfig.provider === 'UAZAPI' ? "Instância Token" : "API Key (Zavu)"}
                     type="password"
                     value={waConfig.api_key}
                     onChange={e => setWaConfig({ ...waConfig, api_key: e.target.value })}
                   />
                   <Input
-                    label={waConfig.provider === 'EVOLUTION' ? "Nome da Instância" : waConfig.provider === 'UAZAPI' ? "ID da Instância (Opcional)" : "Sender ID / WABA ID"}
-                    placeholder={waConfig.provider === 'UAZAPI' ? "instance01" : "meu-barbeiro-oficial"}
+                    label={waConfig.provider === 'WAPI' ? "Instance ID" : waConfig.provider === 'EVOLUTION' ? "Nome da Instância" : waConfig.provider === 'UAZAPI' ? "ID da Instância (Opcional)" : "Sender ID / WABA ID"}
+                    placeholder={waConfig.provider === 'WAPI' ? "00000000-0000-0000-0000-000000000000" : waConfig.provider === 'UAZAPI' ? "instance01" : "meu-barbeiro-oficial"}
                     value={waConfig.instance_id}
                     onChange={e => setWaConfig({ ...waConfig, instance_id: e.target.value })}
                   />
@@ -580,7 +625,11 @@ const SaaSGlobalSettingsPage: React.FC = () => {
                         <label className="text-xs font-bold text-slate-400">Notificar Barbeiros</label>
                       </div>
                   </div>
-                  <Button variant="secondary" className="text-xs h-9" onClick={() => addToast('Notificação de teste enviada!', 'info')}>
+                  <Button 
+                    variant="secondary" 
+                    className="text-xs h-9" 
+                    onClick={handleSendTest}
+                  >
                     <Smartphone size={14} /> Enviar Notificação de Teste
                   </Button>
                 </div>

@@ -1,139 +1,124 @@
-// Supabase Edge Function: whatsapp-notifier
-// Dispara notificações via WhatsApp (Uazapi) baseadas em gatilhos do banco
-
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
 serve(async (req) => {
-    if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders })
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+
+  try {
+    const payload = await req.json()
+    const { table, action, data } = payload
+    const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', { auth: { persistSession: false } })
+
+    // 1. BLOQUEIO DE GATILHOS ANTIGOS
+    // Ignoramos INSERTs automáticos de agendamentos e produtos para evitar duplicidade com o novo fluxo manual
+    if (action === 'INSERT' && (table === 'appointments' || table === 'product_orders') && data.id !== 'test-id') {
+      console.log(`[WhatsAppNotifier] Ignorando gatilho automático de ${table} (Novo fluxo manual ativo)`)
+      return new Response(JSON.stringify({ skipped: true, reason: 'automatic_trigger_disabled' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    try {
-        const { table, action, data } = await req.json()
-        console.log(`[WhatsAppNotifier] Event: ${table} ${action} for ID: ${data.id}`)
+    // 2. CONFIGURAÇÕES W-API
+    const { data: config } = await supabaseAdmin.from('saas_whatsapp_config').select('*').eq('is_active', true).maybeSingle()
+    if (!config || !config.instance_id) throw new Error('Configuração W-API não encontrada.')
 
-        const supabaseAdmin = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-            { auth: { persistSession: false } }
-        )
+    const instId = config.instance_id.trim()
+    const baseUrl = config.api_url.endsWith('/') ? config.api_url.slice(0, -1) : config.api_url
+    const finalUrl = `${baseUrl}/message/send-text?instanceId=${instId}`
 
-        // 1. Buscar Configuração Global de WhatsApp
-        const { data: config, error: configError } = await supabaseAdmin
-            .from('saas_whatsapp_config')
-            .select('*')
-            .single()
-
-        if (configError || !config || !config.is_active) {
-            console.warn('[WhatsAppNotifier] WhatsApp desativado ou configuração não encontrada.')
-            return new Response(JSON.stringify({ skipped: true, reason: 'disabled' }), { status: 200 })
-        }
-
-        // 2. Buscar Dados do Estabelecimento (Tenant)
-        const tenantId = data.tenant_id
-        const { data: tenant, error: tenantError } = await supabaseAdmin
-            .from('tenants')
-            .select('name, phone')
-            .eq('id', tenantId)
-            .single()
-
-        if (tenantError || !tenant) {
-            console.error('[WhatsAppNotifier] Tenant não encontrado:', tenantId)
-            return new Response(JSON.stringify({ error: 'Tenant not found' }), { status: 404 })
-        }
-
-        // 3. Montar Mensagem e Destinatários
-        let message = ''
-        const recipients: string[] = [tenant.phone].filter(Boolean)
-
-        if (table === 'appointments') {
-            const dateStr = new Date(data.date + 'T12:00:00').toLocaleDateString('pt-BR')
-            
-            // Buscar Nome do Barbeiro
-            let barberName = 'A definir'
-            if (data.barber_id) {
-                const { data: barber } = await supabaseAdmin
-                    .from('users')
-                    .select('name, phone')
-                    .eq('id', data.barber_id)
-                    .single()
-                
-                if (barber) {
-                    barberName = barber.name
-                    if (barber.phone && barber.phone !== tenant.phone) {
-                        recipients.push(barber.phone)
-                    }
-                }
-            }
-
-            message = `✂️ *Novo Agendamento via Site!*\n\n` +
-                      `👤 *Cliente:* ${data.client_name}\n` +
-                      `📅 *Data:* ${dateStr}\n` +
-                      `⏰ *Hora:* ${data.time}\n` +
-                      `🧔 *Barbeiro:* ${barberName}\n\n` +
-                      `_Acesse o painel para confirmar._`
-
-        } else if (table === 'product_orders') {
-            message = `🛍️ *Novo Pedido Recebido!*\n\n` +
-                      `👤 *Cliente:* ${data.client_name}\n` +
-                      `💰 *Total:* R$ ${Number(data.total).toFixed(2)}\n\n` +
-                      `_Verifique o pedido no painel financeiro!_`
-        }
-
-        if (!message) {
-            return new Response(JSON.stringify({ skipped: true, reason: 'no_message_schema' }), { status: 200 })
-        }
-
-        // 4. Enviar via Provedor (Uazapi)
-        const validRecipients = [...new Set(recipients)]
-        const results = []
-
-        for (const phone of validRecipients) {
-            let cleanPhone = phone.replace(/\D/g, '')
-            if (cleanPhone.length === 10 || cleanPhone.length === 11) {
-                cleanPhone = `55${cleanPhone}`
-            }
-
-            try {
-                if (config.provider === 'UAZAPI') {
-                    const response = await fetch(`${config.api_url}/send/text`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'token': config.api_key
-                        },
-                        body: JSON.stringify({
-                            number: cleanPhone,
-                            text: message,
-                            delay: 1200
-                        })
-                    })
-                    results.push({ phone, status: response.status })
-                } else {
-                    console.warn(`[WhatsAppNotifier] Provedor ${config.provider} não implementado na Edge Function.`)
-                }
-            } catch (err) {
-                console.error(`[WhatsAppNotifier] Erro ao enviar para ${phone}:`, err)
-                results.push({ phone, error: err.message })
-            }
-        }
-
-        return new Response(JSON.stringify({ success: true, results }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200,
-        })
-
-    } catch (error: any) {
-        console.error('[WhatsAppNotifier] Error:', error.message)
-        return new Response(JSON.stringify({ error: error.message }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 500,
-        })
+    // 3. BUSCAR TENANT E DESTINATÁRIOS
+    let tenantName = 'Barbearia', tenantPhone = null
+    const tenantId = data.tenant_id
+    if (tenantId) {
+      const { data: t } = await supabaseAdmin.from('tenants').select('name, phone').eq('id', tenantId).maybeSingle()
+      if (t) { tenantName = t.name; tenantPhone = t.phone?.replace(/\D/g, '') }
     }
+
+    const recipients: string[] = []
+    if (data.override_phone) {
+      recipients.push(data.override_phone.replace(/\D/g, ''))
+    } else {
+      if (tenantPhone) recipients.push(tenantPhone)
+      // Se for um combo ou agendamento, tentamos pegar o telefone do barbeiro
+      const barbId = data.appointment?.barber_id || data.barber_id
+      if (barbId) {
+        const { data: barb } = await supabaseAdmin.from('users').select('phone').eq('id', barbId).maybeSingle()
+        if (barb?.phone) recipients.push(barb.phone.replace(/\D/g, ''))
+      }
+    }
+
+    // 4. MONTAGEM DA MENSAGEM (FLUXO UNIFICADO)
+    let message = `✂️ *NOVA NOTIFICAÇÃO - ${tenantName.toUpperCase()}*\n\n`
+    message += `👤 *Cliente:* ${data.client_name || 'Não informado'}\n`
+    message += `📱 *WhatsApp:* ${data.client_phone || 'Não informado'}\n`
+
+    const appointment = data.appointment || (table === 'appointments' || data.id === 'test-id' ? data : null)
+    const products = data.products || (table === 'product_orders' ? data : null)
+
+    let totalGeral = 0
+
+    // Parte A: Agendamento
+    if (appointment) {
+      const dateStr = appointment.date ? new Date(appointment.date + 'T12:00:00').toLocaleDateString('pt-BR') : '--/--'
+      const sIds = appointment.service_ids || (appointment.service_id ? [appointment.service_id] : [])
+      let servicesText = 'Serviço', servicesTotal = 0
+      
+      if (sIds.length > 0) {
+        const { data: sRows } = await supabaseAdmin.from('services').select('name, price').in('id', sIds)
+        if (sRows) { 
+          servicesText = sRows.map(s => s.name).join(', '); 
+          servicesTotal = sRows.reduce((acc, s) => acc + (s.price || 0), 0) 
+        }
+      }
+
+      let barberName = 'A definir'
+      const barbId = appointment.barber_id
+      if (barbId) {
+        const { data: bRow } = await supabaseAdmin.from('users').select('name').eq('id', barbId).maybeSingle()
+        if (bRow) barberName = bRow.name
+      }
+
+      message += `📅 *Data:* ${dateStr}\n`
+      message += `⏰ *Horário:* ${appointment.time || '--:--'}\n`
+      message += `✂️ *Serviços:* ${servicesText}\n`
+      message += `🧔 *Barbeiro:* ${barberName}\n`
+      message += `💰 *Valor Serviços:* R$ ${servicesTotal.toFixed(2)}\n`
+      totalGeral += servicesTotal
+    }
+
+    // Parte B: Produtos
+    if (products && products.items) {
+      message += `\n🛍️ *Produtos:*\n`
+      products.items.forEach((it: any) => {
+        message += `• ${it.quantity}x ${it.product_name} (R$ ${it.unit_price?.toFixed(2)})\n`
+      })
+      const pTotal = products.total || 0
+      message += `💰 *Valor Produtos:* R$ ${pTotal.toFixed(2)}\n`
+      totalGeral += pTotal
+    }
+
+    // Parte C: Totalizador (se houver ambos ou se for apenas produtos)
+    if (appointment && products) {
+      message += `\n💸 *VALOR TOTAL:* R$ ${totalGeral.toFixed(2)}\n`
+    }
+
+    message += `\n_Enviado via sistema meuBarbeiro_`
+
+    // 5. ENVIO W-API
+    for (const phone of [...new Set(recipients)]) {
+      await fetch(finalUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${config.api_key}` },
+        body: JSON.stringify({ instanceId: instId, number: phone, phone: phone, to: phone, content: message, message: message })
+      })
+    }
+
+    return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+
+  } catch (err: any) {
+    return new Response(JSON.stringify({ success: false, error: err.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+  }
 })

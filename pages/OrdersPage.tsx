@@ -34,8 +34,8 @@ export enum OrderStatus {
 
 export const OrderStatusLabels: Record<OrderStatus, string> = {
   [OrderStatus.PENDING]: 'PENDENTE',
-  [OrderStatus.READY]: 'SEPARADO',
-  [OrderStatus.COMPLETED]: 'RETIRADO',
+  [OrderStatus.READY]: 'EM SEPARAÇÃO',
+  [OrderStatus.COMPLETED]: 'ENTREGUE',
   [OrderStatus.CANCELLED]: 'CANCELADO'
 };
 
@@ -127,14 +127,7 @@ const OrdersPage: React.FC = () => {
 
       const order = orders.find(o => o.id === orderId);
 
-      if (newStatus === OrderStatus.READY) {
-        addToast('Pedido marcado como separado!', 'success');
-        addNotification({
-          title: 'Pedido Pronto para Retirada',
-          message: `O pedido de ${order?.client_name} está separado e aguardando retirada.`,
-          type: 'info'
-        });
-      } else if (newStatus === OrderStatus.COMPLETED) {
+      if (newStatus === OrderStatus.COMPLETED) {
         if (order) {
             // Unificação de Vendas: Criar transação financeira e baixar estoque
             await processSale({
@@ -237,18 +230,6 @@ const OrdersPage: React.FC = () => {
 
         <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-sky-500/10 text-sky-500 rounded-lg">
-              <Package size={20} />
-            </div>
-            <div>
-              <p className="text-2xl font-black text-white">{readyCount}</p>
-              <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Separados</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
             <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg">
               <CheckCircle2 size={20} />
             </div>
@@ -256,7 +237,7 @@ const OrdersPage: React.FC = () => {
               <p className="text-2xl font-black text-white">
                 {orders.filter(o => o.status === OrderStatus.COMPLETED).length}
               </p>
-              <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Retirados</p>
+              <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Entregues</p>
             </div>
           </div>
         </Card>
@@ -395,23 +376,15 @@ const OrdersPage: React.FC = () => {
                     <p className="text-[10px] text-slate-600 uppercase tracking-widest">{order.product_order_items.length} item(s)</p>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {order.status === OrderStatus.PENDING && (
-                      <Button
-                        onClick={(e) => { e.stopPropagation(); handleUpdateStatus(order.id, OrderStatus.READY); }}
-                        className="h-10 px-3 text-xs"
-                      >
-                        <Package size={16} /> Separar
-                      </Button>
-                    )}
-                    {order.status === OrderStatus.READY && (
-                      <Button
-                        onClick={(e) => { e.stopPropagation(); handleUpdateStatus(order.id, OrderStatus.COMPLETED); }}
-                        className="h-10 px-3 text-xs"
-                      >
-                        <CheckCircle2 size={16} /> Entregar
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {(order.status === OrderStatus.PENDING || order.status === OrderStatus.READY) && (
+                        <Button
+                          onClick={(e) => { e.stopPropagation(); handleUpdateStatus(order.id, OrderStatus.COMPLETED); }}
+                          className="h-10 px-3 text-xs"
+                        >
+                          <CheckCircle2 size={16} /> Entregar
+                        </Button>
+                      )}
                     <Button
                       variant="ghost"
                       className="p-2 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity"
@@ -515,7 +488,7 @@ const OrdersPage: React.FC = () => {
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-800">
-              {selectedOrder.status === OrderStatus.PENDING && (
+              {(selectedOrder.status === OrderStatus.PENDING || selectedOrder.status === OrderStatus.READY) && (
                 <>
                   <Button
                     variant="danger"
@@ -526,26 +499,9 @@ const OrdersPage: React.FC = () => {
                   </Button>
                   <Button
                     className="flex-[2]"
-                    onClick={() => handleUpdateStatus(selectedOrder.id, OrderStatus.READY)}
-                  >
-                    <Package size={18} /> Marcar como Separado
-                  </Button>
-                </>
-              )}
-              {selectedOrder.status === OrderStatus.READY && (
-                <>
-                  <Button
-                    variant="danger"
-                    className="flex-1"
-                    onClick={() => handleUpdateStatus(selectedOrder.id, OrderStatus.CANCELLED)}
-                  >
-                    <XCircle size={18} /> Cancelar
-                  </Button>
-                  <Button
-                    className="flex-[2]"
                     onClick={() => handleUpdateStatus(selectedOrder.id, OrderStatus.COMPLETED)}
                   >
-                    <CheckCircle2 size={18} /> Confirmar Retirada
+                    <CheckCircle2 size={18} /> Marcar como Entregue
                   </Button>
                 </>
               )}
